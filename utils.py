@@ -205,13 +205,16 @@ def jsonToModel(json_model_path):
 def list_to_file(data, fname):
     with open(fname, 'w') as f:
         for item in data:
-            f.write("%s" % item)
+            f.write("%s\n" % item)
 
 
 def file_to_list(fname):
+    data_r = []
     with open(fname, 'r') as f:
         data = f.readlines()
-    return data
+    for i in range(int(len(data)/2)):
+        data_r.append(data[2*i].split('\n')[0])
+    return data_r
     
 
 def write_to_file(dictionary, fname):

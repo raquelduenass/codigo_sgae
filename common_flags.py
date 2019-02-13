@@ -21,7 +21,7 @@ gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
 # Files
 gflags.DEFINE_string('experiment_rootdir', "./models/test_1", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "./ProcessedData",
+gflags.DEFINE_string('data_path', "./data/music_speech",
                      'Folder containing the whole dataset')
 gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
                      ' to be processed')

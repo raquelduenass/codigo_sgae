@@ -19,13 +19,11 @@ import data_utils
 import log_utils
 from common_flags import FLAGS
 from time import time, strftime, localtime
-from test import evaluate_classification
 
 # Constants
 TRAIN_PHASE = 1
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-
 def getModel(img_height, img_width, output_dim, weights_path):
     """
     Initialize model.
@@ -162,7 +160,7 @@ def _main():
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
     # Output dimension (2 classes)
-    num_classes = 2
+    num_classes = 3
 
     # Generate training data with real-time augmentation
     train_datagen = data_utils.DataGenerator(rescale = 1./255)
@@ -170,16 +168,15 @@ def _main():
     # Iterator object containing training data to be generated batch by batch
     train_generator = train_datagen.flow_from_directory('train',
                                                         num_classes,
-                                                        shuffle = False,
+                                                        shuffle = True,
                                                         target_size=(img_height, img_width),
                                                         batch_size = FLAGS.batch_size)
-    
-    _, _, train_labels = train_generator
     
     # Check if the number of classes in dataset corresponds to the one specified                                                    
     assert train_generator.num_classes == num_classes, \
                         " Not macthing output dimensions in training data."                                                   
 
+    
     # Generate validation data with real-time augmentation
     val_datagen = data_utils.DataGenerator(rescale = 1./255)
     
@@ -189,12 +186,15 @@ def _main():
                                                     shuffle = False,
                                                     target_size=(img_height, img_width),
                                                     batch_size = FLAGS.batch_size)
-    _, _, val_labels = val_generator
 
     # Check if the number of classes in dataset corresponds to the one specified
     assert val_generator.num_classes == num_classes, \
                         " Not matching output dimensions in validation data."
-                        
+    
+    #Labels
+    labels_train = next(train_generator)[1]
+    labels_val = next(val_generator)[1]
+          
     # Weights to restore
     weights_path = FLAGS.initial_weights
     
@@ -226,26 +226,6 @@ def _main():
     
     # Plot training and validation losses
     utils.plot_loss(FLAGS.experiment_rootdir)
-    
-    
-    #####
-    probs_per_class, ground_truth = utils.compute_predictions_and_gt(
-            model, val_generator, 15, verbose = 1)
-    
-    # Predicted probabilities
-    pred_probs = np.max(probs_per_class, axis=-1)
-    # Prediced labels
-    pred_labels = np.argmax(probs_per_class, axis=-1)
-    # Real labels (ground truth)
-    real_labels = np.argmax(ground_truth, axis=-1)
-          
-    # Evaluate predictions: Average accuracy and highest errors
-    print("-----------------------------------------------")
-    print("Evalutaion:")
-    evaluation = evaluate_classification(pred_probs, pred_labels, real_labels)
-    print("-----------------------------------------------")
-    
-    ######
 
 def main(argv):
     # Utility main to load flags

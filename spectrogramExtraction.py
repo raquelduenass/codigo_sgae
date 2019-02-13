@@ -12,8 +12,8 @@ import csv
 import utils
 
 # Data directories
-root_data_path = "/data/music_speech"
-root_data_path2 = "/data/muspeak"
+root_data_path = "./data/music_speech"
+root_data_path2 = "./data/muspeak"
 
 # Folder exploration
 classes = os.listdir(root_data_path)
@@ -113,5 +113,5 @@ def create_database(root_data_path):
     
     return
 
-#create_database(root_data_path)
-create_database_muspeak(root_data_path2)
+create_database(root_data_path)
+#create_database_muspeak(root_data_path2)

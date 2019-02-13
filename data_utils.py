@@ -1,16 +1,16 @@
 import os
 import numpy as np
-import utils
-import librosa
 
 import keras
 from keras import backend as K
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
-from pydub import AudioSegment
+#from pydub import AudioSegment
 from common_flags import FLAGS
+import utils
 from random import shuffle
-from pyAudioAnalysis import audioFeatureExtraction
+import librosa
+#from pyAudioAnalysis import audioFeatureExtraction
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -25,7 +25,7 @@ class DataGenerator(ImageDataGenerator):
                             batch_size=32, shuffle=True,
                             seed=None, follow_links=False):
         return DirectoryIterator(
-                directory, num_classes, self, target_size=target_size,
+                directory, num_classes, self, target_size=target_size, #img_mode=img_mode,
                 batch_size=batch_size, shuffle=shuffle, seed=seed,
                 follow_links=follow_links)
 
@@ -46,7 +46,7 @@ class DirectoryIterator(Iterator):
     # TODO: Add functionality to save images to have a look at the augmentation
     """
     def __init__(self, phase, num_classes, image_data_generator,
-            target_size=(55,100),
+            target_size=(224,224,3),
             batch_size=32, shuffle=True, seed=None, follow_links=False):
         self.image_data_generator = image_data_generator
         self.target_size = target_size
@@ -54,6 +54,9 @@ class DirectoryIterator(Iterator):
         
         # Initialize number of classes
         self.num_classes = num_classes
+        
+        # Allowed image formats
+        self.formats = {'png', 'jpg'}
 
         # Number of samples in dataset
         self.samples = 0
@@ -68,9 +71,9 @@ class DirectoryIterator(Iterator):
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt')
             moments_file = os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt')
         elif phase == 'test':
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'data.txt')#'test_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'labels.txt')#'test_labels.txt')
-            moments_file = os.path.join(FLAGS.experiment_rootdir, 'moments.txt')#'test_moments.txt')
+            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
+            moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
         
         self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         
@@ -103,10 +106,10 @@ class DirectoryIterator(Iterator):
         with self.lock:
             index_array = next(self.index_generator)
 
-        return self._get_batches_of_transformed_samples(index_array)
+        return [self._get_batches_of_transformed_samples(index_array, False),
+                self._get_batches_of_transformed_samples(index_array, True)]
 
-
-    def _get_batches_of_transformed_samples(self, index_array):
+    def _get_batches_of_transformed_samples(self, index_array, label):
         """
         Public function to fetch next batch.
         Image transformation is not under thread lock, so it can be done in
@@ -122,12 +125,12 @@ class DirectoryIterator(Iterator):
         batch_y = np.zeros((current_batch_size, self.num_classes,),
                                  dtype=K.floatx())
         # Initialize batch of silence labels
-        labels = np.zeros((current_batch_size,0,))
-
+        labels = np.zeros((current_batch_size, 0))
+        indexes = []
+        index = 0
+        
         # Build batch of image data
         for i, j in enumerate(index_array):
-            index = 0
-            indexes = []
             # x = create_spectrogram(j, self.moments, self.filenames, self.target_size)
             x = compute_melgram(j, self.moments, self.filenames)
             if silence_detection(x):
@@ -136,61 +139,26 @@ class DirectoryIterator(Iterator):
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
                 x = self.image_data_generator.standardize(x)
+                x = np.resize(x,(100,100))
                 batch_x[index] = x
                 indexes.append(index)
                 index = index + 1
-            
+
         # Build batch of labels
         batch_y = np.array(self.ground_truth[indexes], dtype=K.floatx())
         batch_y = keras.utils.to_categorical(batch_y, num_classes=self.num_classes)
         batch_x = np.expand_dims(batch_x, axis=3)
-        return batch_x, batch_y, labels
-
-def create_spectrogram(i, moments, data, target_size):
-    newAudio = AudioSegment.from_file(data[i], format="wav")
-    segment = newAudio[int(moments[i])*1000:(int(moments[i])+1)*1000]
-
-    Fs=20000
-    segment = segment.get_array_of_samples()
-    pxx, TimeAxis, FreqAxis = audioFeatureExtraction.stSpectogram(
-            segment, Fs, round(Fs * 0.010), round(Fs * 0.020), False)
-    pxx = np.resize(pxx, target_size)
-    return pxx
-
-
-def compute_melgram(i, moments, data):
-    ''' Compute a mel-spectrogram and returns it in a shape of (96,1366), where
-    96 == #mel-bins and 1366 == #time frame'''
-
-    # mel-spectrogram parameters
-    SR = 12000
-    N_FFT = 512
-    N_MELS = 96
-    HOP_LEN = 256
-    DURA = 1  # to make it 1366 frame..
-
-    src, sr = librosa.load(data[i], sr=SR)  # whole signal
-    n_sample = src.shape[0]
-    n_sample_fit = int(DURA*SR)
-
-    if n_sample < n_sample_fit:  # if too short
-        src = np.hstack((src, np.zeros((int(DURA*SR) - n_sample,))))
-    elif n_sample > n_sample_fit:  # if too long
-        src = src[(n_sample-n_sample_fit)/2:(n_sample+n_sample_fit)/2]
-    logam = librosa.amplitude_to_db
-    melgram = librosa.feature.melspectrogram
-    ret = logam(melgram(y=src[moments[i]], sr=SR, hop_length=HOP_LEN,
-                        n_fft=N_FFT, n_mels=N_MELS)**2,
-                ref_power=1.0)
-    return ret
-
+        if label:
+            return labels
+        else:
+            return batch_x, batch_y
 
 def cross_val_create(data_path):
     
     # Filenames, moments and labels of all samples in dataset.
-    filenames = utils.file_to_list(os.path.join(FLAGS.data_path,'data.txt'))[:-1]
-    moments = utils.file_to_list(os.path.join(FLAGS.data_path,'moments.txt'))[:-1]
-    labels = utils.file_to_list(os.path.join(FLAGS.data_path,'labels.txt'))[:-1]
+    filenames = utils.file_to_list(os.path.join(FLAGS.data_path,'data.txt'))
+    moments = utils.file_to_list(os.path.join(FLAGS.data_path,'moments.txt'))
+    labels = utils.file_to_list(os.path.join(FLAGS.data_path,'labels.txt'))
         
     order = list(range(len(filenames)))
     shuffle(order)
@@ -217,19 +185,43 @@ def cross_val_create(data_path):
     utils.list_to_file(train_moments, os.path.join(FLAGS.experiment_rootdir, 'train_moments.txt'))
     utils.list_to_file(val_moments, os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt'))
     utils.list_to_file(test_moments, os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt'))
+
     return
 
-
 def cross_val_load(dirs_file, moments_file, labels_file):
-    dirs_list = utils.file_to_list(dirs_file)[:-1]
-    labels_list = utils.file_to_list(labels_file)[:-1]
-    moments_list = utils.file_to_list(moments_file)[:-1]
-    labels_list = [int(label) for label in labels_list]
-    moments_list = [int(moment) for moment in moments_list]
+    dirs_list = utils.file_to_list(dirs_file)
+    labels_list = utils.file_to_list(labels_file)
+    labels_list = [int(i) for i in labels_list]
+    moments_list = utils.file_to_list(moments_file)
+        
     return dirs_list, moments_list, labels_list
 
 
-def silence_detection(spectrogram):
+def compute_melgram(i, moments, data):
+    ''' Compute a mel-spectrogram and returns it in a shape of (96,1366), where
+    96 == #mel-bins and 1366 == #time frame'''
+
+    # mel-spectrogram parameters
+    SR = 12000
+    N_FFT = 512
+    N_MELS = 96
+    HOP_LEN = 256
+    DURA = 1  # to make it 1366 frame..
+    audio, sr = librosa.load(data[i])
+    src = audio[int(moments[i])*sr:(int(moments[i])+1)*sr]
+    n_sample = src.shape[0]
+    n_sample_fit = int(DURA*SR)
+
+    if n_sample < n_sample_fit:  # if too short
+        src = np.concatenate([src, np.zeros((int(DURA*SR) - n_sample,))])
+    elif n_sample > n_sample_fit:  # if too long
+        src = src[int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
+    ret = librosa.amplitude_to_db(librosa.feature.melspectrogram(
+            y=src, sr=SR, hop_length=HOP_LEN,
+            n_fft=N_FFT, n_mels=N_MELS)**2)
+    return ret
+
+def silence_detection(audio_slice):
     silence_thresh = -16
-    silence = librosa.rmse(spectrogram) <= silence_thresh
+    silence = librosa.feature.rmse(audio_slice) <= silence_thresh
     return silence

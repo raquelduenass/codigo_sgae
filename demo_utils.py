@@ -1,21 +1,6 @@
 import numpy as np
 import librosa
 
-#from pydub import AudioSegment
-#from pyAudioAnalysis import audioFeatureExtraction
-#
-#def create_spectrogram(i, moments, data, target_size):
-#    newAudio = AudioSegment.from_file(data[i], format="wav")
-#    segment = newAudio[int(moments[i])*1000:(int(moments[i])+1)*1000]
-#
-#    Fs=20000
-#    segment = segment.get_array_of_samples()
-#    pxx, TimeAxis, FreqAxis = audioFeatureExtraction.stSpectogram(
-#            segment, Fs, round(Fs * 0.010), round(Fs * 0.020), False)
-#    pxx = np.resize(pxx, target_size)
-#    return pxx
-
-
 def compute_melgram(src):
     ''' Compute a mel-spectrogram and returns it in a shape of (96,1366), where
     96 == #mel-bins and 1366 == #time frame'''
