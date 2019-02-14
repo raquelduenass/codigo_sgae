@@ -208,13 +208,16 @@ def list_to_file(data, fname):
             f.write("%s\n" % item)
 
 
-def file_to_list(fname):
-    data_r = []
+def file_to_list(fname, skip):
     with open(fname, 'r') as f:
         data = f.readlines()
-    for i in range(int(len(data)/2)):
-        data_r.append(data[2*i].split('\n')[0])
-    return data_r
+    if skip:
+        data_s = []
+        for i in range(int(len(data)/2)):
+            data_s.append(data[2*i])
+        return data_s
+    else:
+        return data
     
 
 def write_to_file(dictionary, fname):

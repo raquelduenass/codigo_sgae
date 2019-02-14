@@ -71,7 +71,9 @@ def _main():
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)
-
+    
+    labels = next(test_generator)[1]
+    
     # Load json and create model
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
     model = utils.jsonToModel(json_model_path)
@@ -99,7 +101,14 @@ def _main():
     pred_labels = np.argmax(probs_per_class, axis=-1)
     # Real labels (ground truth)
     real_labels = np.argmax(ground_truth, axis=-1)
-          
+    
+    # Join classes - silence labels
+    j = 0
+    for i in range(len(pred_labels)):
+        while labels[j] != 0:
+            j = j+1
+        labels[j] = CLASSES[pred_labels[i]]
+    
     # Evaluate predictions: Average accuracy and highest errors
     print("-----------------------------------------------")
     print("Evalutaion:")

@@ -5,12 +5,10 @@ import keras
 from keras import backend as K
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
-#from pydub import AudioSegment
 from common_flags import FLAGS
 import utils
 from random import shuffle
 import librosa
-#from pyAudioAnalysis import audioFeatureExtraction
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -98,18 +96,19 @@ class DirectoryIterator(Iterator):
                 batch_size, shuffle, seed)
 
 
-    def next(self):
+    def next(self, label=False):
         """
         Public function to fetch next batch
         # Returns: The next batch of images and commands.
         """
         with self.lock:
             index_array = next(self.index_generator)
+        if label:
+            return self._get_batches_of_transformed_samples(index_array, True)
+        else:
+            return self._get_batches_of_transformed_samples(index_array, False)
 
-        return [self._get_batches_of_transformed_samples(index_array, False),
-                self._get_batches_of_transformed_samples(index_array, True)]
-
-    def _get_batches_of_transformed_samples(self, index_array, label):
+    def _get_batches_of_transformed_samples(self, index_array, label=False):
         """
         Public function to fetch next batch.
         Image transformation is not under thread lock, so it can be done in
@@ -125,7 +124,7 @@ class DirectoryIterator(Iterator):
         batch_y = np.zeros((current_batch_size, self.num_classes,),
                                  dtype=K.floatx())
         # Initialize batch of silence labels
-        labels = np.zeros((current_batch_size, 0))
+        labels = np.zeros((current_batch_size,))
         indexes = []
         index = 0
         
@@ -156,9 +155,9 @@ class DirectoryIterator(Iterator):
 def cross_val_create(data_path):
     
     # Filenames, moments and labels of all samples in dataset.
-    filenames = utils.file_to_list(os.path.join(FLAGS.data_path,'data.txt'))
-    moments = utils.file_to_list(os.path.join(FLAGS.data_path,'moments.txt'))
-    labels = utils.file_to_list(os.path.join(FLAGS.data_path,'labels.txt'))
+    filenames = utils.file_to_list(os.path.join(FLAGS.data_path,'data.txt'), False)
+    moments = utils.file_to_list(os.path.join(FLAGS.data_path,'moments.txt'), False)
+    labels = utils.file_to_list(os.path.join(FLAGS.data_path,'labels.txt'), False)
         
     order = list(range(len(filenames)))
     shuffle(order)
@@ -189,10 +188,10 @@ def cross_val_create(data_path):
     return
 
 def cross_val_load(dirs_file, moments_file, labels_file):
-    dirs_list = utils.file_to_list(dirs_file)
-    labels_list = utils.file_to_list(labels_file)
-    labels_list = [int(i) for i in labels_list]
-    moments_list = utils.file_to_list(moments_file)
+    dirs_list = utils.file_to_list(dirs_file, True)
+    labels_list = utils.file_to_list(labels_file, True)
+    labels_list = [int(i.split('\n')[0]) for i in labels_list]
+    moments_list = utils.file_to_list(moments_file, True)
         
     return dirs_list, moments_list, labels_list
 
@@ -207,7 +206,7 @@ def compute_melgram(i, moments, data):
     N_MELS = 96
     HOP_LEN = 256
     DURA = 1  # to make it 1366 frame..
-    audio, sr = librosa.load(data[i])
+    audio, sr = librosa.load(data[i].split('\n')[0])
     src = audio[int(moments[i])*sr:(int(moments[i])+1)*sr]
     n_sample = src.shape[0]
     n_sample_fit = int(DURA*SR)
