@@ -14,7 +14,7 @@ gflags.DEFINE_string('img_mode', "grayscale", 'Load mode for images, either '
 
 # Training parameters
 gflags.DEFINE_integer('batch_size', 64, 'Batch size in training and evaluation')
-gflags.DEFINE_integer('epochs', 2, 'Number of epochs for training')
+gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
 gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
 

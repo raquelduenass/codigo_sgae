@@ -292,3 +292,42 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
     elif phase == 'outer_test':
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
     #plt.show()
+
+def softening(labels):
+    """
+    """
+    # Silence filtering:
+    silence_th = 4
+    silence_pos, silence_len = counting(labels, 'S')
+    for i in range(len(silence_pos)):
+        if silence_len(i)<silence_th:
+            if labels[silence_pos[i]-1]==labels[silence_pos[i+silence_len]+1]:
+                labels[silence_pos[i]:silence_pos[i+silence_len]] = labels[silence_pos[i]-1]
+            # else:
+            #   RECLASIFICACIÓN POR CNN
+                
+    # Standarization of classes
+    for i in range(len(labels)):
+        if not (labels[i]== 'M'):
+            labels[i]='NM'
+            
+    # Softening music/non-music classes
+    music_th = 1
+    non_music_th = 1
+    
+    return labels
+
+def counting(data, label):
+    loc = [i for i in range(len(data)) if data[i]==label]
+    pos = [loc[i] for i in range(len(loc))+1 if not (loc[i] == (loc[i-1]-1)) or i==1]
+    fin = [loc[i] for i in range(len(loc)) if not (loc[i] == (loc[i+1]+1))]
+    length = fin-pos
+    return pos, length
+
+def join_labels(pred, silence, CLASSES):
+    j = 0
+    for i in range(len(pred)):
+        while silence[j] != 0:
+            j = j+1
+        silence[j] = CLASSES[pred[i]]
+    return silence

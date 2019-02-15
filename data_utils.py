@@ -9,6 +9,8 @@ from common_flags import FLAGS
 import utils
 from random import shuffle
 import librosa
+import matplotlib.pyplot as plt
+import librosa.display
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -117,21 +119,18 @@ class DirectoryIterator(Iterator):
         """
         current_batch_size = index_array.shape[0]
                     
-        # Initialize batch of images
-        batch_x = np.zeros((current_batch_size,) + self.target_size,
-                dtype=K.floatx())
-        # Initialize batch of ground truth
-        batch_y = np.zeros((current_batch_size, self.num_classes,),
-                                 dtype=K.floatx())
-        # Initialize batch of silence labels
+        # Initialize batches and indexes
+        batch_x = []
         labels = np.zeros((current_batch_size,))
         indexes = []
-        index = 0
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            # x = create_spectrogram(j, self.moments, self.filenames, self.target_size)
             x = compute_melgram(j, self.moments, self.filenames)
+#            if i==0:
+#                plt.figure(figsize=(10,4))
+#                librosa.display.specshow(librosa.power_to_db(x, ref=np.max), fmax=22000)
+#                plt.colorbar(format='%+2.0f dB')
             if silence_detection(x):
                 labels[i] = 'S'
             else:
@@ -139,13 +138,13 @@ class DirectoryIterator(Iterator):
                 x = self.image_data_generator.random_transform(x)
                 x = self.image_data_generator.standardize(x)
                 x = np.resize(x,(100,100))
-                batch_x[index] = x
-                indexes.append(index)
-                index = index + 1
+                batch_x.append(x)
+                indexes.append(j)
 
         # Build batch of labels
         batch_y = np.array(self.ground_truth[indexes], dtype=K.floatx())
         batch_y = keras.utils.to_categorical(batch_y, num_classes=self.num_classes)
+        batch_x = np.asarray(batch_x)
         batch_x = np.expand_dims(batch_x, axis=3)
         if label:
             return labels
