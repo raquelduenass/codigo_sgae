@@ -10,7 +10,7 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M','H']
+CLASSES = ['M','NM']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
    
 def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
@@ -72,14 +72,12 @@ def _main():
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)
     
-    silence_labels = next(test_generator)[1]
-    
     # Load json and create model
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_5/weights_002.h5')
+    weights_load_path = os.path.abspath('./models/test_1/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -102,9 +100,6 @@ def _main():
     # Real labels (ground truth)
     real_labels = np.argmax(ground_truth, axis=-1)
     
-    # Join classes - silence labels
-    labels = utils.join_labels(pred_labels, silence_labels, CLASSES)
-    
     # Evaluate predictions: Average accuracy and highest errors
     print("-----------------------------------------------")
     print("Evalutaion:")
@@ -119,12 +114,6 @@ def _main():
                   'real_labels': real_labels.tolist()}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
                                                'predicted_and_real_labels.json'))
-    
-    # Save continuous prediction
-    utils.list_to_file(labels, os.path.join(FLAGS.experiment_rootdir, 'final_labels.txt'))
-    
-    # Softening of classes prediction
-    soft_labels = utils.softening(labels)
                                                
     # Visualize confusion matrix                                           
     utils.plot_confusion_matrix('test', FLAGS.experiment_rootdir, real_labels,

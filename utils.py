@@ -293,29 +293,46 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
     #plt.show()
 
+
 def softening(labels):
     """
     """
-    # Silence filtering:
     silence_th = 4
+    music_th = 1
+    non_music_th = 1
+    
+    # Silence filtering:
     silence_pos, silence_len = counting(labels, 'S')
     for i in range(len(silence_pos)):
-        if silence_len(i)<silence_th:
+        if silence_len[i]<silence_th:
             if labels[silence_pos[i]-1]==labels[silence_pos[i+silence_len]+1]:
-                labels[silence_pos[i]:silence_pos[i+silence_len]] = labels[silence_pos[i]-1]
-            # else:
-            #   RECLASIFICACIÓN POR CNN
+                labels[silence_pos[i]:silence_pos[i+silence_len[i]]] = labels[silence_pos[i]-1]
+            else:
+                labels[silence_pos[i]:silence_pos[i+int(silence_len[i]/2)]] = labels[silence_pos[i]-1]
+                labels[silence_pos[i+int(silence_len[i]/2)]:silence_pos[i+silence_len[i]]] = labels[silence_pos[i]+1]
+                #   IDEAL: RECLASIFICACIÓN POR CNN
                 
     # Standarization of classes
     for i in range(len(labels)):
         if not (labels[i]== 'M'):
             labels[i]='NM'
             
-    # Softening music/non-music classes
-    music_th = 1
-    non_music_th = 1
-    
+    # Softening music class
+    music_pos, music_len = counting(labels,'M')
+    for i in range(len(music_pos)):
+        if music_len[i]<music_th:
+            if labels[music_pos[i]-1]==labels[music_pos[i+music_len[i]]+1]:
+                labels[music_pos[i]:music_pos[i+music_len[i]]] = labels[music_pos[i]-1]
+                
+    # Softening non-music class
+    non_music_pos, non_music_len = counting(labels,'NM')
+    for i in range(len(non_music_pos)):
+        if non_music_len(i)<non_music_th:
+            if labels[non_music_pos[i]-1]==labels[non_music_pos[i+non_music_len]+1]:
+                labels[non_music_pos[i]:non_music_pos[i+non_music_len]] = labels[non_music_pos[i]-1]
+                
     return labels
+
 
 def counting(data, label):
     loc = [i for i in range(len(data)) if data[i]==label]
@@ -324,6 +341,7 @@ def counting(data, label):
     length = fin-pos
     return pos, length
 
+
 def join_labels(pred, silence, CLASSES):
     j = 0
     for i in range(len(pred)):
@@ -331,3 +349,4 @@ def join_labels(pred, silence, CLASSES):
             j = j+1
         silence[j] = CLASSES[pred[i]]
     return silence
+

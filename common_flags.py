@@ -23,6 +23,8 @@ gflags.DEFINE_string('experiment_rootdir', "./models/test_1", 'Folder '
                      ' containing all the logs, model weights and results')
 gflags.DEFINE_string('data_path', "./data/music_speech",
                      'Folder containing the whole dataset')
+gflags.DEFINE_string('demo_path', "./data/demo",
+                     'Folder containing the demo dataset')
 gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
                      ' to be processed')
 

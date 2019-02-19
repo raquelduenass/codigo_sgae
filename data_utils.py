@@ -74,6 +74,10 @@ class DirectoryIterator(Iterator):
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
             moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
+        elif phase == 'demo':
+            dirs_file = os.path.join(FLAGS.demo_path, 'files.txt')
+            labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
+            moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
         
         self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         

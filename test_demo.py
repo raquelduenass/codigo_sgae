@@ -2,14 +2,17 @@ import gflags
 import numpy as np
 import os
 import sys
-from keras import backend as K
 import utils
 import demo_utils
+import data_utils
+import librosa
+from sklearn import metrics
+from keras import backend as K
 from common_flags import FLAGS 
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['music','no-music']
+CLASSES = ['M','NM']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 
 def _main():
@@ -21,10 +24,12 @@ def _main():
     num_classes = 2
 
     # Generate testing data
-    test_datagen = demo_utils.DataGenerator(rescale=1./255)
+    test_datagen = data_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
-    test_generator = test_datagen.flow_from_directory(num_classes,
+    test_generator = test_datagen.flow_from_directory('demo',
+                                                      num_classes,
+                                                      shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)
 
@@ -50,7 +55,16 @@ def _main():
             model, test_generator, nb_batches, verbose = 1)
     
     # Prediced labels
-    classes = np.argmax(probs_per_class, axis=-1)
+    silence_labels = next(test_generator, True)
+    classes = CLASSES[np.argmax(probs_per_class, axis=-1)]
+    labels = utils.join_labels(classes,silence_labels, CLASSES)
+    
+    # Class softening
+    soft_labels = utils.softening(labels)
+    
+    # Accuracy after softening
+    ave_accuracy = metrics.accuracy_score(classes,soft_labels)
+    print('Softening accuracy: ', ave_accuracy)
 
                                                
 def main(argv):
