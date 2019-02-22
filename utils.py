@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix
 
 def compute_predictions_and_gt(model, generator, steps,
                                      max_q_size=10,
-                                     pickle_safe=False, verbose=0):
+                                     pickle_safe=False, verbose=1):
     """
     Generate predictions and associated ground truth for the input samples
     from a data generator. The generator should return the same kind of data as
@@ -148,7 +148,6 @@ def compute_predictions(model, generator, steps,
             elif len(generator_output) == 3:
                 x, _, _ = generator_output
             else:
-                
                 raise ValueError('output of generator should be '
                                  'a tuple `(x, y, sample_weight)` '
                                  'or `(x, y)`. Found: ' +
@@ -349,4 +348,3 @@ def join_labels(pred, silence, CLASSES):
             j = j+1
         silence[j] = CLASSES[pred[i]]
     return silence
-

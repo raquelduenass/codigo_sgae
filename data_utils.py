@@ -75,7 +75,7 @@ class DirectoryIterator(Iterator):
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
             moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
         elif phase == 'demo':
-            dirs_file = os.path.join(FLAGS.demo_path, 'files.txt')
+            dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
             labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
             moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
         

@@ -4,8 +4,6 @@ import os
 import sys
 import utils
 import demo_utils
-import data_utils
-import librosa
 from sklearn import metrics
 from keras import backend as K
 from common_flags import FLAGS 
@@ -24,11 +22,10 @@ def _main():
     num_classes = 2
 
     # Generate testing data
-    test_datagen = data_utils.DataGenerator(rescale=1./255)
+    test_datagen = demo_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
-    test_generator = test_datagen.flow_from_directory('demo',
-                                                      num_classes,
+    test_generator = test_datagen.flow_from_directory(num_classes,
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)
@@ -38,7 +35,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_5/weights_002.h5')
+    weights_load_path = os.path.abspath('./models/test_1/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -47,26 +44,36 @@ def _main():
 
     # Compile model
     model.compile(loss='categorical_crossentropy', optimizer='adam')
-
+    print('Model compiled')
+    
     # Get predictions and ground truth
     n_samples = test_generator.samples
+    print('Samples')
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
-    probs_per_class = utils.compute_predictions(
+    print('N batches')
+    probs_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose = 1)
+    print('Probs')
     
     # Prediced labels
     silence_labels = next(test_generator, True)
-    classes = CLASSES[np.argmax(probs_per_class, axis=-1)]
+    classes = CLASSES[list(np.argmax(probs_per_class, axis=-1))]
     labels = utils.join_labels(classes,silence_labels, CLASSES)
+    real_labels = np.argmax(ground_truth, axis=-1)
     
     # Class softening
     soft_labels = utils.softening(labels)
     
     # Accuracy after softening
-    ave_accuracy = metrics.accuracy_score(classes,soft_labels)
+    ave_accuracy = metrics.accuracy_score(real_labels,soft_labels)
     print('Softening accuracy: ', ave_accuracy)
-
-                                               
+    
+    # Detection of beginning of music
+    music_pos, music_dur = utils.counting(soft_labels, 'M')
+    print('Music detected in:')
+    for i in range(len(music_pos)):
+        print('Inicio: ',music_pos[i]//60, 'min ', int(music_pos[i]%60), 'seg - Duracion: ', music_dur[i])
+    
 def main(argv):
     # Utility main to load flags
     try:
