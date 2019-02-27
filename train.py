@@ -160,7 +160,7 @@ def _main():
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
     # Output dimension (2 classes)
-    num_classes = 2
+    num_classes = 3
 
     # Generate training data with real-time augmentation
     train_datagen = data_utils.DataGenerator(rescale = 1./255)
@@ -190,10 +190,6 @@ def _main():
     # Check if the number of classes in dataset corresponds to the one specified
     assert val_generator.num_classes == num_classes, \
                         " Not matching output dimensions in validation data."
-    
-    #Labels
-    labels_train = next(train_generator, True)
-    labels_val = next(val_generator, True)
           
     # Weights to restore
     weights_path = FLAGS.initial_weights

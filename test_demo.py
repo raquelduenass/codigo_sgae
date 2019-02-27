@@ -10,7 +10,7 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M','NM']
+CLASSES = ['MH','M','H']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 
 def _main():
@@ -44,22 +44,18 @@ def _main():
 
     # Compile model
     model.compile(loss='categorical_crossentropy', optimizer='adam')
-    print('Model compiled')
     
     # Get predictions and ground truth
     n_samples = test_generator.samples
-    print('Samples')
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
-    print('N batches')
     probs_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose = 1)
-    print('Probs')
     
     # Prediced labels
-    silence_labels = next(test_generator, True)
-    classes = CLASSES[list(np.argmax(probs_per_class, axis=-1))]
-    labels = utils.join_labels(classes,silence_labels, CLASSES)
-    real_labels = np.argmax(ground_truth, axis=-1)
+    silence_labels = test_generator.silence_labels
+    classes = [CLASSES[i] for i in np.argmax(probs_per_class, axis=-1)]
+    labels = utils.join_labels(classes,silence_labels)
+    real_labels = [CLASSES[i] for i in np.argmax(ground_truth, axis=-1)]
     
     # Class softening
     soft_labels = utils.softening(labels)

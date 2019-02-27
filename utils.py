@@ -335,16 +335,17 @@ def softening(labels):
 
 def counting(data, label):
     loc = [i for i in range(len(data)) if data[i]==label]
-    pos = [loc[i] for i in range(len(loc))+1 if not (loc[i] == (loc[i-1]-1)) or i==1]
-    fin = [loc[i] for i in range(len(loc)) if not (loc[i] == (loc[i+1]+1))]
-    length = fin-pos
+    pos = [loc[i] for i in range(len(loc)) if (not (data[loc[i]] == data[loc[i]-1]))]
+    fin = [loc[i] for i in range(len(loc)) if (not (data[loc[i]] == data[loc[i]+1]))]
+    length = [fin[i]-pos[i] for i in range(len(pos))]
     return pos, length
 
 
-def join_labels(pred, silence, CLASSES):
+def join_labels(pred, silence):
     j = 0
     for i in range(len(pred)):
-        while silence[j] != 0:
+        while silence[j] != '':
             j = j+1
-        silence[j] = CLASSES[pred[i]]
+        silence[j] = pred[i]
+        j = j+1
     return silence

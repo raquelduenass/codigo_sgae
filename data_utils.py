@@ -11,6 +11,7 @@ from random import shuffle
 import librosa
 import matplotlib.pyplot as plt
 import librosa.display
+from scipy.io import wavfile
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -54,9 +55,6 @@ class DirectoryIterator(Iterator):
         
         # Initialize number of classes
         self.num_classes = num_classes
-        
-        # Allowed image formats
-        self.formats = {'png', 'jpg'}
 
         # Number of samples in dataset
         self.samples = 0
@@ -74,19 +72,19 @@ class DirectoryIterator(Iterator):
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
             moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
-        elif phase == 'demo':
-            dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
-            labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
-            moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
         
         self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         
         # Number of samples per class
         self.samples_per_class = [self.ground_truth.count(0),
-                                  self.ground_truth.count(1)]
+                                  self.ground_truth.count(1),
+                                  self.ground_truth.count(2)]
+         
+        self.silence_labels = ['' for x in range(self.samples)]
         
         # Number of samples in dataset
         self.samples = len(self.filenames) 
+        self.segments = separate_audio(self.moments, self.filenames)
         
         # Check if dataset is empty            
         if self.samples == 0:
@@ -102,41 +100,33 @@ class DirectoryIterator(Iterator):
                 batch_size, shuffle, seed)
 
 
-    def next(self, label=False):
+    def next(self):
         """
         Public function to fetch next batch
         # Returns: The next batch of images and commands.
         """
         with self.lock:
             index_array = next(self.index_generator)
-        if label:
-            return self._get_batches_of_transformed_samples(index_array, True)
-        else:
-            return self._get_batches_of_transformed_samples(index_array, False)
+            
+        return self._get_batches_of_transformed_samples(index_array)
 
-    def _get_batches_of_transformed_samples(self, index_array, label=False):
+    def _get_batches_of_transformed_samples(self, index_array):
         """
         Public function to fetch next batch.
         Image transformation is not under thread lock, so it can be done in
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-        current_batch_size = index_array.shape[0]
                     
         # Initialize batches and indexes
         batch_x = []
-        labels = np.zeros((current_batch_size,))
         indexes = []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = compute_melgram(j, self.moments, self.filenames)
-#            if i==0:
-#                plt.figure(figsize=(10,4))
-#                librosa.display.specshow(librosa.power_to_db(x, ref=np.max), fmax=22000)
-#                plt.colorbar(format='%+2.0f dB')
+            x = compute_melgram(self.segments[j])
             if silence_detection(x):
-                labels[i] = 'S'
+                self.silence_labels[j] = 'S'
             else:
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
@@ -150,10 +140,8 @@ class DirectoryIterator(Iterator):
         batch_y = keras.utils.to_categorical(batch_y, num_classes=self.num_classes)
         batch_x = np.asarray(batch_x)
         batch_x = np.expand_dims(batch_x, axis=3)
-        if label:
-            return labels
-        else:
-            return batch_x, batch_y
+    
+        return batch_x, batch_y
 
 def cross_val_create(data_path):
     
@@ -199,7 +187,16 @@ def cross_val_load(dirs_file, moments_file, labels_file):
     return dirs_list, moments_list, labels_list
 
 
-def compute_melgram(i, moments, data):
+def separate_audio(moments, files):
+    segments = []
+    sr, audio = wavfile.read(files[0].split('\n')[0])
+    # audio, sr = librosa.load(files[0].split('\n')[0])
+    for i in moments:
+        segments.append(audio[int(i)*sr:(int(i)+1)*sr])
+    return segments
+
+
+def compute_melgram(src):
     ''' Compute a mel-spectrogram and returns it in a shape of (96,1366), where
     96 == #mel-bins and 1366 == #time frame'''
 
@@ -209,8 +206,6 @@ def compute_melgram(i, moments, data):
     N_MELS = 96
     HOP_LEN = 256
     DURA = 1  # to make it 1366 frame..
-    audio, sr = librosa.load(data[i].split('\n')[0])
-    src = audio[int(moments[i])*sr:(int(moments[i])+1)*sr]
     n_sample = src.shape[0]
     n_sample_fit = int(DURA*SR)
 

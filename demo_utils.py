@@ -8,6 +8,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from common_flags import FLAGS
 import utils
 import librosa
+from scipy.io import wavfile
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -72,6 +73,9 @@ class DirectoryIterator(Iterator):
 
         # Conversion of list into array
         self.ground_truth = np.array(self.ground_truth, dtype= K.floatx())
+        
+        # Silence labels
+        self.silence_labels = ['' for x in range(self.samples)]
 
         print('Found {} images belonging to {} classes.'.format(
                 self.samples, self.num_classes))
@@ -80,37 +84,33 @@ class DirectoryIterator(Iterator):
                 batch_size, shuffle, seed)
 
 
-    def next(self, label=False):
+    def next(self):
         """
         Public function to fetch next batch
         # Returns: The next batch of images and commands.
         """
         with self.lock:
             index_array = next(self.index_generator)
-        if label:
-            return self._get_batches_of_transformed_samples(index_array, True)
-        else:
-            return self._get_batches_of_transformed_samples(index_array, False)
+        
+        return self._get_batches_of_transformed_samples(index_array)
 
-    def _get_batches_of_transformed_samples(self, index_array, label=False):
+    def _get_batches_of_transformed_samples(self, index_array):
         """
         Public function to fetch next batch.
         Image transformation is not under thread lock, so it can be done in
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-        current_batch_size = index_array.shape[0]
                     
         # Initialize batches and indexes
         batch_x = []
-        labels = np.zeros((current_batch_size,))
         indexes = []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
             x = compute_melgram(self.segments[j])
             if silence_detection(x):
-                labels[i] = 'S'
+                self.silence_labels[j] = 'S'
             else:
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
@@ -124,10 +124,8 @@ class DirectoryIterator(Iterator):
         batch_y = keras.utils.to_categorical(batch_y, num_classes=self.num_classes)
         batch_x = np.asarray(batch_x)
         batch_x = np.expand_dims(batch_x, axis=3)
-        if label:
-            return labels
-        else:
-            return batch_x, batch_y
+    
+        return batch_x, batch_y
 
 
 def cross_val_load(dirs_file, moments_file, labels_file):
@@ -141,7 +139,8 @@ def cross_val_load(dirs_file, moments_file, labels_file):
 
 def separate_audio(moments, files):
     segments = []
-    audio, sr = librosa.load(files[0].split('\n')[0])
+    sr, audio = wavfile.read(files[0].split('\n')[0])
+    # audio, sr = librosa.load(files[0].split('\n')[0])
     for i in moments:
         segments.append(audio[int(i)*sr:(int(i)+1)*sr])
     return segments
