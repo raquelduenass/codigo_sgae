@@ -129,18 +129,18 @@ class DirectoryIterator(Iterator):
 
 
 def cross_val_load(dirs_file, moments_file, labels_file):
-    dirs_list = utils.file_to_list(dirs_file, True)
-    labels_list = utils.file_to_list(labels_file, True)
+    dirs_list = utils.file_to_list(dirs_file, False)
+    labels_list = utils.file_to_list(labels_file, False)
     labels_list = [int(i.split('\n')[0]) for i in labels_list]
-    moments_list = utils.file_to_list(moments_file, True)
+    moments_list = utils.file_to_list(moments_file, False)
         
     return dirs_list, moments_list, labels_list
 
 
 def separate_audio(moments, files):
     segments = []
-    sr, audio = wavfile.read(files[0].split('\n')[0])
-    # audio, sr = librosa.load(files[0].split('\n')[0])
+    #sr, audio = wavfile.read(files[0].split('\n')[0])
+    audio, sr = librosa.load(files[0].split('\n')[0])
     for i in moments:
         segments.append(audio[int(i)*sr:(int(i)+1)*sr])
     return segments
@@ -173,4 +173,3 @@ def silence_detection(audio_slice):
     silence_thresh = -16
     silence = librosa.feature.rmse(audio_slice) <= silence_thresh
     return silence
-

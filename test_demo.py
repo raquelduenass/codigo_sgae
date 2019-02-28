@@ -10,8 +10,9 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['MH','M','H']
+CLASSES = ['M','H']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
+os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 def _main():
 
@@ -60,6 +61,10 @@ def _main():
     # Class softening
     soft_labels = utils.softening(labels)
     
+    # Accuracy before softening
+    ave_accuracy = metrics.accuracy_score(real_labels,labels)
+    print('Initial accuracy: ', ave_accuracy)
+    
     # Accuracy after softening
     ave_accuracy = metrics.accuracy_score(real_labels,soft_labels)
     print('Softening accuracy: ', ave_accuracy)
@@ -68,7 +73,7 @@ def _main():
     music_pos, music_dur = utils.counting(soft_labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
-        print('Inicio: ',music_pos[i]//60, 'min ', int(music_pos[i]%60), 'seg - Duracion: ', music_dur[i])
+        print('Inicio: ',music_pos[i]//60, 'min ', int(music_pos[i]%60), 'seg - Duración: ', music_dur[i])
     
 def main(argv):
     # Utility main to load flags

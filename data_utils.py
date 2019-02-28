@@ -9,9 +9,6 @@ from common_flags import FLAGS
 import utils
 from random import shuffle
 import librosa
-import matplotlib.pyplot as plt
-import librosa.display
-from scipy.io import wavfile
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -99,7 +96,6 @@ class DirectoryIterator(Iterator):
         super(DirectoryIterator, self).__init__(self.samples,
                 batch_size, shuffle, seed)
 
-
     def next(self):
         """
         Public function to fetch next batch
@@ -142,6 +138,7 @@ class DirectoryIterator(Iterator):
         batch_x = np.expand_dims(batch_x, axis=3)
     
         return batch_x, batch_y
+
 
 def cross_val_create(data_path):
     
@@ -189,10 +186,10 @@ def cross_val_load(dirs_file, moments_file, labels_file):
 
 def separate_audio(moments, files):
     segments = []
-    sr, audio = wavfile.read(files[0].split('\n')[0])
-    # audio, sr = librosa.load(files[0].split('\n')[0])
-    for i in moments:
-        segments.append(audio[int(i)*sr:(int(i)+1)*sr])
+    for j in range(len(files)):
+        #sr, audio = wavfile.read(files[j].split('\n')[0])
+        audio, sr = librosa.load(files[j].split('\n')[0])
+        segments.append(audio[int(moments[j])*sr:(int(moments[j])+1)*sr])
     return segments
 
 
@@ -218,7 +215,9 @@ def compute_melgram(src):
             n_fft=N_FFT, n_mels=N_MELS)**2)
     return ret
 
+
 def silence_detection(audio_slice):
     silence_thresh = -16
     silence = librosa.feature.rmse(audio_slice) <= silence_thresh
     return silence
+

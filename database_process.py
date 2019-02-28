@@ -40,15 +40,15 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label):
 def data_and_labels_muspeak(music_file, data_list, label_list, moments_list, start_list, end_list):
     
     audio = AudioSegment.from_file(music_file, format="mp3")
-    labels = np.zeros((int(audio.duration_seconds),))
+    labels = np.ones((int(audio.duration_seconds),))
     
     for i in range(len(start_list)):
-        labels[start_list[i]:end_list[i]] = 1
+        labels[start_list[i]:end_list[i]] = 0
     for i in range(int(audio.duration_seconds)):
         data_list.append(os.path.abspath(music_file))
         moments_list.append(i)
        
-    label_list = list(labels)   
+    label_list = list(labels)
     return data_list, label_list, moments_list
 
 
@@ -112,10 +112,11 @@ def classes_combination(root_data_path):
         comb_scaled = comb/np.max(np.abs(comb))
         output_path = os.path.join(root_data_path, 'music_speech_wav',
                                    'comb_'+str(i)+'.wav')
-        librosa.output.write_wav(output_path, comb_scaled, sr_music)
+        wavfile.write(output_path, sr_music, comb_scaled)
+        #librosa.output.write_wav(output_path, comb_scaled, sr_music)
         
     return
 
 #classes_combination(root_data_path)
-create_database(root_data_path, True)
-#create_database(root_data_path2, False)
+#create_database(root_data_path, True)
+create_database(root_data_path2, False)

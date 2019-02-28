@@ -12,7 +12,8 @@ from common_flags import FLAGS
 TEST_PHASE = 1
 CLASSES = ['M','NM']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-   
+os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
+
 def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
     """
     Compute the 'n_errors' highest errors predicted by the network
