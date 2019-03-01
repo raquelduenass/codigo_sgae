@@ -55,15 +55,30 @@ def _main():
     # Prediced labels
     silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(probs_per_class, axis=-1)]
-    labels = utils.join_labels(classes,silence_labels)
+    pred_labels = utils.join_labels(classes,silence_labels)
     real_labels = [CLASSES[i] for i in np.argmax(ground_truth, axis=-1)]
     
-    # Class softening
-    soft_labels = utils.softening(labels)
-    
+    # Standardize real labels
+    for i in range(len(real_labels)):
+        if not (real_labels[i]== 'M'):
+            real_labels[i]='NM'
+            
     # Accuracy before softening
-    ave_accuracy = metrics.accuracy_score(real_labels,labels)
+    ave_accuracy = metrics.accuracy_score(real_labels,pred_labels)
     print('Initial accuracy: ', ave_accuracy)
+    
+    # Class softening
+#    labels = pred_labels
+    soft_labels = utils.softening(pred_labels)
+    for i in range(4):
+        soft_labels = utils.softening(soft_labels)
+    
+    # Save predicted and real steerings as a dictionary
+    labels_dict = {'pred_labels': pred_labels,
+                   'soft_labels': soft_labels,
+                  'real_labels': real_labels}
+    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
+                                               'demo_predicted_and_real_labels.json'))
     
     # Accuracy after softening
     ave_accuracy = metrics.accuracy_score(real_labels,soft_labels)

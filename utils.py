@@ -298,7 +298,7 @@ def softening(labels):
     """
     silence_th = 4
     music_th = 4
-    non_music_th = 4
+    non_music_th = 10
     
     # Silence filtering:
     silence_pos, silence_len = counting(labels, 'S')

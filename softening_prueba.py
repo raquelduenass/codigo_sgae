@@ -27,12 +27,14 @@ def counting(data, label):
         length = []
     return pos, length
 
-def softening(labels):
+def softening(pred_labels):
+    
     """
     """
+    labels = pred_labels
     silence_th = 4
-    music_th = 4
-    non_music_th = 4
+    music_th = 5
+    non_music_th = 20
     
     # Silence filtering:
     silence_pos, silence_len = counting(labels, 'S')
@@ -70,8 +72,30 @@ def softening(labels):
                 
     return labels
 
-silence_labels = ['' for x in range(50)]
-pred = ['NM' for x in range(46)]
-pred[2] = 'M'
-labels = join_labels(pred, silence_labels)
-soft_labels = softening(labels)
+import json
+from sklearn import metrics
+
+with open('./models/test_1/demo_predicted_and_real_labels.json') as f:
+    data = json.load(f)
+pred_labels = data['pred_labels']
+soft_labels = data['soft_labels']
+real_labels = data['real_labels']
+
+# Standardize real labels
+for i in range(len(real_labels)):
+    if not (real_labels[i]== 'M'):
+        real_labels[i]='NM'
+        
+# Accuracy before softening
+ave_accuracy = metrics.accuracy_score(real_labels,pred_labels)
+print('Initial accuracy: ', ave_accuracy)
+
+labels = pred_labels
+softened = softening(labels)
+for i in range(4):
+    softened = softening(softened)
+
+# Accuracy after softening
+ave_accuracy = metrics.accuracy_score(real_labels,softened)
+print('Softening accuracy: ', ave_accuracy)
+    

@@ -10,7 +10,7 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M','NM']
+CLASSES = ['HM','M','H']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -61,7 +61,7 @@ def _main():
     K.set_learning_phase(TEST_PHASE)
     
     # Output dimension (2 classes)
-    num_classes = 2
+    num_classes = 3
 
     # Generate testing data
     test_datagen = data_utils.DataGenerator(rescale=1./255)
@@ -78,7 +78,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_1/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_2/weights_016.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))

@@ -14,12 +14,12 @@ gflags.DEFINE_string('img_mode', "grayscale", 'Load mode for images, either '
 
 # Training parameters
 gflags.DEFINE_integer('batch_size', 64, 'Batch size in training and evaluation')
-gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
-gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
+gflags.DEFINE_integer('epochs', 20, 'Number of epochs for training')
+gflags.DEFINE_integer('initial_epoch', 10, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
 
 # Files
-gflags.DEFINE_string('experiment_rootdir', "./models/test_1", 'Folder '
+gflags.DEFINE_string('experiment_rootdir', "./models/test_2", 'Folder '
                      ' containing all the logs, model weights and results')
 gflags.DEFINE_string('data_path', "./data/music_speech",
                      'Folder containing the whole dataset')
@@ -31,9 +31,9 @@ gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
 # Model
 gflags.DEFINE_bool('restore_model', True, 'Whether to restore a trained'
                    ' model for training')
-gflags.DEFINE_string('weights_fname', './models/test_3/weights_050.h5',
+gflags.DEFINE_string('weights_fname', './models/test_2/weights_020.h5',
                      '(Relative) filename of model weights')
-gflags.DEFINE_string('initial_weights','./models/test_3/weights_050.h5',
+gflags.DEFINE_string('initial_weights','./models/test_2/weights_020.h5',
                      '(Relative) filename of model initial training weights')
 gflags.DEFINE_string('json_model_fname', "model_struct.json",
                           'Model struct json serialization, filename')
