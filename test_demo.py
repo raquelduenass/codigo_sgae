@@ -10,7 +10,7 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M','H']
+CLASSES = ['MH','M','H']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -20,7 +20,7 @@ def _main():
     K.set_learning_phase(TEST_PHASE)
     
     # Output dimension (2 classes)
-    num_classes = 2
+    num_classes = 3
 
     # Generate testing data
     test_datagen = demo_utils.DataGenerator(rescale=1./255)
@@ -36,7 +36,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_1/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_2/weights_016.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -63,22 +63,20 @@ def _main():
         if not (real_labels[i]== 'M'):
             real_labels[i]='NM'
             
+    # Save predicted and real steerings as a dictionary
+    labels_dict = {'pred_labels': pred_labels,
+                  'real_labels': real_labels}
+    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
+                                               'demo_predicted_and_real_labels.json'))
+            
     # Accuracy before softening
     ave_accuracy = metrics.accuracy_score(real_labels,pred_labels)
     print('Initial accuracy: ', ave_accuracy)
     
     # Class softening
-#    labels = pred_labels
     soft_labels = utils.softening(pred_labels)
     for i in range(4):
-        soft_labels = utils.softening(soft_labels)
-    
-    # Save predicted and real steerings as a dictionary
-    labels_dict = {'pred_labels': pred_labels,
-                   'soft_labels': soft_labels,
-                  'real_labels': real_labels}
-    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
-                                               'demo_predicted_and_real_labels.json'))
+        soft_labels = utils.softening(soft_labels)    
     
     # Accuracy after softening
     ave_accuracy = metrics.accuracy_score(real_labels,soft_labels)

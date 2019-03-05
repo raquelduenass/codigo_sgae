@@ -8,7 +8,6 @@ from keras.preprocessing.image import ImageDataGenerator
 from common_flags import FLAGS
 import utils
 import librosa
-from scipy.io import wavfile
 
 class DataGenerator(ImageDataGenerator):
     """
@@ -58,7 +57,10 @@ class DirectoryIterator(Iterator):
 
         # File of database for the phase
         dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
-        labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
+        if num_classes == 2:
+            labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
+        elif num_classes == 3:
+            labels_file = os.path.join(FLAGS.demo_path, 'labels3.txt')
         moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
     
         self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
@@ -139,7 +141,6 @@ def cross_val_load(dirs_file, moments_file, labels_file):
 
 def separate_audio(moments, files):
     segments = []
-    #sr, audio = wavfile.read(files[0].split('\n')[0])
     audio, sr = librosa.load(files[0].split('\n')[0])
     for i in moments:
         segments.append(audio[int(i)*sr:(int(i)+1)*sr])

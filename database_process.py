@@ -19,7 +19,7 @@ root_data_path = "./data/music_speech"
 root_data_path2 = "./data/muspeak"
 
 # Folder exploration
-classes = os.listdir(root_data_path)
+# classes = os.listdir(root_data_path)
 
 ##♥
 def data_and_labels(music_path, data_list, label_list, moments_list, label):
@@ -108,7 +108,7 @@ def classes_combination(root_data_path):
     for i in range(len(os.listdir(music_path))):
         speech, sr_speech = librosa.load(speech_files[i])
         music, sr_music = librosa.load(music_files[i])
-        comb = 0.6*speech+0.4*music
+        comb = 0.8*speech+0.2*music
         comb_scaled = comb/np.max(np.abs(comb))
         output_path = os.path.join(root_data_path, 'music_speech_wav',
                                    'comb_'+str(i)+'.wav')
@@ -117,6 +117,15 @@ def classes_combination(root_data_path):
         
     return
 
+def labels_demo(data_path, file, classes):
+    labels_old = utils.file_to_list(os.path.join(data_path, file), False)
+    if classes == 3:
+        dct = {'0\n':'1', '1\n':'2'}
+        labels = list(map(dct.get, labels_old))
+    utils.list_to_file(labels, os.path.join(data_path, 'labels3.txt'))
+    return
+
 #classes_combination(root_data_path)
 #create_database(root_data_path, True)
-create_database(root_data_path2, False)
+#create_database(root_data_path2, False)
+labels_demo(root_data_path2, 'labels.txt', 3)

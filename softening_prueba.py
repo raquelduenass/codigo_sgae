@@ -27,6 +27,24 @@ def counting(data, label):
         length = []
     return pos, length
 
+def soft_apply(labels, pos, length, th):
+    if not(len(pos)==0):
+        for i in range(len(pos)):
+            if length[i]<th:
+                if not(len(labels)<=pos[i]+length[i]):
+                    if labels[pos[i]-1]==labels[pos[i]+length[i]+1]:
+                        labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
+                    else:
+                        add = length[i]%2
+                        labels[pos[i]:(pos[i]+int(length[i]/2))] = [labels[pos[i]-1]]*(int(length[i]/2)+add)
+                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] = [labels[pos[i]+length[i]]]*(int(length[i]/2))
+                else:
+                    if length[i]>1:
+                        labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
+                    else:
+                        labels[pos[i]] = labels[pos[i]-1]
+    return labels
+
 def softening(pred_labels):
     
     """
@@ -38,47 +56,28 @@ def softening(pred_labels):
     
     # Silence filtering:
     silence_pos, silence_len = counting(labels, 'S')
-    if not(len(silence_pos)==0):
-        for i in range(len(silence_pos)):
-            if silence_len[i]<silence_th:
-                if labels[silence_pos[i]-1]==labels[silence_pos[i]+silence_len[i]]:
-                    labels[silence_pos[i]:silence_pos[i]+silence_len[i]] = [labels[silence_pos[i]-1]]*(silence_len[i])
-                else:
-                    labels[silence_pos[i]:silence_pos[i]+int(silence_len[i]/2)] = [labels[silence_pos[i]-1]*(int(silence_len[i]/2))]
-                    labels[silence_pos[i]+int(silence_len[i]/2):silence_pos[i]+silence_len[i]] = [labels[silence_pos[i]+silence_len[i]]*(int(silence_len[i]/2))]
-                    #   IDEAL: RECLASIFICACIÓN POR CNN
-               
-#    # Standarization of classes
+    labels = soft_apply(labels, silence_pos, silence_len, silence_th)
+            
+    # Standarization of classes
     for i in range(len(labels)):
         if not (labels[i]== 'M'):
             labels[i]='NM'
             
-           
     # Softening music class
     music_pos, music_len = counting(labels,'M')
-    if not(len(music_pos)==0):
-        for i in range(len(music_pos)):
-            if music_len[i]<music_th:
-                if labels[music_pos[i]-1]==labels[music_pos[i]+music_len[i]+1]:
-                    labels[music_pos[i]:music_pos[i]+music_len[i]] = [labels[music_pos[i]-1]]*(music_len[i])
-           
+    labels = soft_apply(labels, music_pos, music_len, music_th)
+    
     # Softening non-music class
     non_music_pos, non_music_len = counting(labels,'NM')
-    if not(len(non_music_pos)==0):
-        for i in range(len(non_music_pos)):
-            if non_music_len[i]<non_music_th:
-                if labels[non_music_pos[i]-1]==labels[non_music_pos[i]+non_music_len[i]+1]:
-                    labels[non_music_pos[i]:non_music_pos[i]+non_music_len[i]] = [labels[non_music_pos[i]-1]]*(non_music_len[i])
-                
+    labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
     return labels
 
 import json
 from sklearn import metrics
 
-with open('./models/test_1/demo_predicted_and_real_labels.json') as f:
+with open('./models/test_2/demo_predicted_and_real_labels.json') as f:
     data = json.load(f)
 pred_labels = data['pred_labels']
-soft_labels = data['soft_labels']
 real_labels = data['real_labels']
 
 # Standardize real labels
