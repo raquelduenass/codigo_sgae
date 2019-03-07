@@ -7,6 +7,7 @@ import demo_utils
 from sklearn import metrics
 from keras import backend as K
 from common_flags import FLAGS 
+from scipy.signal import medfilt
 
 # Constants
 TEST_PHASE = 1
@@ -36,7 +37,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_2/weights_016.h5')
+    weights_load_path = os.path.abspath('./models/test_3/weights_019.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -74,9 +75,12 @@ def _main():
     print('Initial accuracy: ', ave_accuracy)
     
     # Class softening
-    soft_labels = utils.softening(pred_labels)
-    for i in range(4):
-        soft_labels = utils.softening(soft_labels)    
+    dct = {'MH':0,'M':1,'H':2,'S':3}
+    new_dct = {0:'M',1:'M',2:'NM', 3:'NM'}
+    labels = list(map(dct.get, pred_labels))
+    softened = medfilt(labels, 9)
+    softened = medfilt(softened, 9)
+    soft_labels = list(map(new_dct.get, softened))
     
     # Accuracy after softening
     ave_accuracy = metrics.accuracy_score(real_labels,soft_labels)
@@ -86,7 +90,8 @@ def _main():
     music_pos, music_dur = utils.counting(soft_labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
-        print('Inicio: ',music_pos[i]//60, 'min ', int(music_pos[i]%60), 'seg - Duración: ', music_dur[i])
+        print('Inicio: ',(music_pos[i]*separacion)//60, 'min ', int((music_pos[i]*separacion)%60),
+              'seg - Duración: ', music_dur[i]*separacion)
     
 def main(argv):
     # Utility main to load flags

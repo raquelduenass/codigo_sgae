@@ -187,7 +187,6 @@ def cross_val_load(dirs_file, moments_file, labels_file):
 def separate_audio(moments, files):
     segments = []
     for j in range(len(files)):
-        #sr, audio = wavfile.read(files[j].split('\n')[0])
         audio, sr = librosa.load(files[j].split('\n')[0])
         segments.append(audio[int(moments[j])*sr:(int(moments[j])+1)*sr])
     return segments

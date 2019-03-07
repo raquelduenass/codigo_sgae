@@ -51,7 +51,7 @@ def softening(pred_labels):
     """
     labels = pred_labels
     silence_th = 4
-    music_th = 5
+    music_th = 20
     non_music_th = 20
     
     # Silence filtering:
@@ -62,23 +62,26 @@ def softening(pred_labels):
     for i in range(len(labels)):
         if not (labels[i]== 'M'):
             labels[i]='NM'
-            
+           
+    # Softening non-music class
+    non_music_pos, non_music_len = counting(labels,'NM')
+    labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
+    
     # Softening music class
     music_pos, music_len = counting(labels,'M')
     labels = soft_apply(labels, music_pos, music_len, music_th)
     
-    # Softening non-music class
-    non_music_pos, non_music_len = counting(labels,'NM')
-    labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
     return labels
 
 import json
 from sklearn import metrics
+from scipy.signal import medfilt
 
-with open('./models/test_2/demo_predicted_and_real_labels.json') as f:
+with open('./models/test_3/demo_predicted_and_real_labels.json') as f:
     data = json.load(f)
 pred_labels = data['pred_labels']
 real_labels = data['real_labels']
+separacion = 2
 
 # Standardize real labels
 for i in range(len(real_labels)):
@@ -89,12 +92,22 @@ for i in range(len(real_labels)):
 ave_accuracy = metrics.accuracy_score(real_labels,pred_labels)
 print('Initial accuracy: ', ave_accuracy)
 
-labels = pred_labels
-softened = softening(labels)
-for i in range(4):
-    softened = softening(softened)
+#labels = pred_labels
+dct = {'MH':0,'M':1,'H':2,'S':3}
+new_dct = {0:'M',1:'M',2:'NM', 3:'NM'}
+labels = list(map(dct.get, pred_labels))
+softened = medfilt(labels, 9)
+softened = medfilt(softened, 15)
+#softened = medfilt(softened, 21)
+softened = list(map(new_dct.get, softened))
 
 # Accuracy after softening
 ave_accuracy = metrics.accuracy_score(real_labels,softened)
 print('Softening accuracy: ', ave_accuracy)
+
+# Detection of beginning of music
+music_pos, music_dur = counting(softened, 'M')
+print('Music detected in:')
+for i in range(len(music_pos)):
+    print('Inicio: ',(music_pos[i]*separacion)//60, 'min ', int((music_pos[i]*separacion)%60), 'seg - Duración: ', music_dur[i]*separacion)
     

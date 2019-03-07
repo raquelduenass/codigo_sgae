@@ -14,54 +14,58 @@ import numpy as np
 import librosa
 from scipy.io import wavfile
 
-# Data directories
-root_data_path = "./data/music_speech"
-root_data_path2 = "./data/muspeak"
-
-# Folder exploration
-# classes = os.listdir(root_data_path)
-
 ##♥
-def data_and_labels(music_path, data_list, label_list, moments_list, label):
+def data_and_labels(music_path, data_list, label_list, moments_list, label, separation):
     
     for music_file in os.listdir(music_path):
+        entry_path = os.path.join(music_path, music_file)
+        
         if music_file.endswith('.wav'):
-            entry_path = os.path.join(music_path, music_file)
-            sr, audio = wavfile.read(entry_path)
-            
-            for i in range(int(len(audio)/sr)):
+            audio = AudioSegment.from_file(entry_path, format="wav")
+            for i in range(int(audio.duration_seconds/separation)):
                 data_list.append(os.path.abspath(os.path.join(music_path, music_file)))
-                moments_list.append(i)
+                moments_list.append(i*separation)
+                label_list.append(label)
+                
+        elif music_file.endswith('.mp3'):
+            audio = AudioSegment.from_file(entry_path, format="mp3")
+            for i in range(int(audio.duration_seconds/separation)):
+                data_list.append(os.path.abspath(os.path.join(music_path, music_file)))
+                moments_list.append(i*separation)
                 label_list.append(label)
                 
     return data_list, label_list, moments_list
 
 
-def data_and_labels_muspeak(music_file, data_list, label_list, moments_list, start_list, end_list):
+def data_and_labels_muspeak(music_file, data_list, label_list, moments_list, start_list, end_list, separation):
     
     audio = AudioSegment.from_file(music_file, format="mp3")
-    labels = np.ones((int(audio.duration_seconds),))
+    labels = np.ones((int(audio.duration_seconds/separation),))
+    start_list[:] = [int(x/separation) for x in start_list]
+    end_list[:] = [int(x/separation) for x in end_list]
     
     for i in range(len(start_list)):
         labels[start_list[i]:end_list[i]] = 0
-    for i in range(int(audio.duration_seconds)):
+    for i in range(int(audio.duration_seconds/separation)):
         data_list.append(os.path.abspath(music_file))
-        moments_list.append(i)
+        moments_list.append(i*separation)
        
     label_list = list(labels)
     return data_list, label_list, moments_list
 
 
-def create_database(root_data_path, separated):
+def create_database(root_data_path, separated, separation):
     
     data_list = []
     label_list = []
     moments_list = []
     
+    classes = os.listdir(root_data_path)
+    
     if separated:
         for classes in os.listdir(root_data_path):
             data_list, label_list, moments_list = data_and_labels(os.path.join(root_data_path, classes),
-                                                data_list, label_list, moments_list, classes)
+                                                data_list, label_list, moments_list, classes, separation)
     else:
         start_list = []
         end_list = []
@@ -84,7 +88,7 @@ def create_database(root_data_path, separated):
                 
                 data_list, label_list, moments_list = data_and_labels_muspeak(
                         audio_file, data_list, label_list, moments_list,
-                        start_list, end_list)
+                        start_list, end_list, separation)
         
     le = preprocessing.LabelEncoder()
     le.fit(label_list)
@@ -97,7 +101,7 @@ def create_database(root_data_path, separated):
     
     return
 
-def classes_combination(root_data_path):
+def classes_combination(root_data_path, music_pct):
     
     classes = os.listdir(root_data_path)
     speech_path = os.path.join(root_data_path, classes[2])
@@ -108,24 +112,22 @@ def classes_combination(root_data_path):
     for i in range(len(os.listdir(music_path))):
         speech, sr_speech = librosa.load(speech_files[i])
         music, sr_music = librosa.load(music_files[i])
-        comb = 0.8*speech+0.2*music
+        comb = (1-music_pct)*speech+music_pct*music
         comb_scaled = comb/np.max(np.abs(comb))
         output_path = os.path.join(root_data_path, 'music_speech_wav',
                                    'comb_'+str(i)+'.wav')
         wavfile.write(output_path, sr_music, comb_scaled)
-        #librosa.output.write_wav(output_path, comb_scaled, sr_music)
         
     return
 
-def labels_demo(data_path, file, classes):
+def labels_demo(data_path, file, num_classes):
     labels_old = utils.file_to_list(os.path.join(data_path, file), False)
-    if classes == 3:
+    if num_classes == 3:
         dct = {'0\n':'1', '1\n':'2'}
-        labels = list(map(dct.get, labels_old))
-    utils.list_to_file(labels, os.path.join(data_path, 'labels3.txt'))
+#    if num_classes == :
+#        dct = {}
+    labels = list(map(dct.get, labels_old))
+    utils.list_to_file(labels, os.path.join(data_path, 'labels'+str(num_classes)+'.txt'))
     return
 
-#classes_combination(root_data_path)
-#create_database(root_data_path, True)
-#create_database(root_data_path2, False)
-labels_demo(root_data_path2, 'labels.txt', 3)
+create_database('./data/mixed', True, 2)

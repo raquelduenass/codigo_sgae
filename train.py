@@ -19,9 +19,17 @@ import data_utils
 import log_utils
 from common_flags import FLAGS
 from time import time, strftime, localtime
+import database_process
 
 # Constants
 TRAIN_PHASE = 1
+
+# Dataset parameters
+flag_dataset = 0
+separation = 2
+overlap = 0
+music_pct = 0.2
+spec_pow = 1
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
@@ -145,6 +153,15 @@ def _main():
         seed = 5
     np.random.seed(seed)
     tf.set_random_seed(seed)
+    
+    # Output dimension
+    num_classes = 3
+    
+    if flag_dataset:
+        database_process.classes_combination(FLAGS.data_path, music_pct)
+        database_process.create_database(FLAGS.data_path, True, separation)
+        database_process.create_database(FLAGS.demo_path, False, separation)
+        database_process.labels_demo(FLAGS.demo_path, 'labels.txt', num_classes)
 
     # Set training phase
     K.set_learning_phase(TRAIN_PHASE)
@@ -159,9 +176,6 @@ def _main():
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
-
-    # Output dimension (2 classes)
-    num_classes = 3
 
     # Generate training data with real-time augmentation
     train_datagen = data_utils.DataGenerator(rescale = 1./255)
