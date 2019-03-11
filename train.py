@@ -29,7 +29,7 @@ flag_dataset = 0
 separation = 2
 overlap = 0
 music_pct = 0.2
-spec_pow = 1
+power = 1 # 0:amplitude, 1:energy, 2:power
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
@@ -155,7 +155,11 @@ def _main():
     tf.set_random_seed(seed)
     
     # Output dimension
-    num_classes = 3
+    num_classes = 5
+     
+    database_process.classes_combination('./data/mixed', False, [0, 3], 0.8)
+    database_process.classes_combination('./data/mixed', False, [2, 3], 0.8)
+    database_process.create_database('./data/mixed', True, 2)
     
     if flag_dataset:
         database_process.classes_combination(FLAGS.data_path, music_pct)
@@ -183,6 +187,7 @@ def _main():
     # Iterator object containing training data to be generated batch by batch
     train_generator = train_datagen.flow_from_directory('train',
                                                         num_classes,
+                                                        power,
                                                         shuffle = True,
                                                         target_size=(img_height, img_width),
                                                         batch_size = FLAGS.batch_size)
@@ -198,6 +203,7 @@ def _main():
     # Iterator object containing validation data to be generated batch by batch
     val_generator = val_datagen.flow_from_directory('val',
                                                     num_classes,
+                                                    power,
                                                     shuffle = False,
                                                     target_size=(img_height, img_width),
                                                     batch_size = FLAGS.batch_size)

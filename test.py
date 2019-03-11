@@ -8,9 +8,12 @@ import utils
 import data_utils
 from common_flags import FLAGS 
 
-# Constants
+#♦ Constants
 TEST_PHASE = 1
-CLASSES = ['HM','M','H']
+power = 1
+#CLASSES = ['HM','M','H']
+CLASSES = ['M','HM','N','H']
+#CLASSES = ['M','HM','N','H' 'HN']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -69,6 +72,7 @@ def _main():
     # Iterator object containing testing data to be generated batch by batch
     test_generator = test_datagen.flow_from_directory('test',
                                                       num_classes,
+                                                      power,
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)

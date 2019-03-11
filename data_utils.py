@@ -19,11 +19,11 @@ class DataGenerator(ImageDataGenerator):
     unchanged.
     """
     # SE REESCRIBE ESTA FUNCION, TODAS LAS DEMAS SE HEREDAN DE IMAGEDATAGENERATOR DE KERAS
-    def flow_from_directory(self, directory, num_classes, target_size=(224,224,3),
+    def flow_from_directory(self, directory, num_classes, power, target_size=(224,224,3),
                             batch_size=32, shuffle=True,
                             seed=None, follow_links=False):
         return DirectoryIterator(
-                directory, num_classes, self, target_size=target_size, #img_mode=img_mode,
+                directory, num_classes, power, self, target_size=target_size, #img_mode=img_mode,
                 batch_size=batch_size, shuffle=shuffle, seed=seed,
                 follow_links=follow_links)
 
@@ -43,7 +43,7 @@ class DirectoryIterator(Iterator):
 
     # TODO: Add functionality to save images to have a look at the augmentation
     """
-    def __init__(self, phase, num_classes, image_data_generator,
+    def __init__(self, phase, num_classes, power, image_data_generator,
             target_size=(224,224,3),
             batch_size=32, shuffle=True, seed=None, follow_links=False):
         self.image_data_generator = image_data_generator
@@ -52,6 +52,8 @@ class DirectoryIterator(Iterator):
         
         # Initialize number of classes
         self.num_classes = num_classes
+        
+        self.power = power
 
         # Number of samples in dataset
         self.samples = 0
@@ -120,7 +122,7 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = compute_melgram(self.segments[j])
+            x = compute_melgram(self.segments[j], self.power)
             if silence_detection(x):
                 self.silence_labels[j] = 'S'
             else:
@@ -192,7 +194,7 @@ def separate_audio(moments, files):
     return segments
 
 
-def compute_melgram(src):
+def compute_melgram(src, power):
     ''' Compute a mel-spectrogram and returns it in a shape of (96,1366), where
     96 == #mel-bins and 1366 == #time frame'''
 
@@ -209,9 +211,15 @@ def compute_melgram(src):
         src = np.concatenate([src, np.zeros((int(DURA*SR) - n_sample,))])
     elif n_sample > n_sample_fit:  # if too long
         src = src[int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
-    ret = librosa.amplitude_to_db(librosa.feature.melspectrogram(
+    mel = librosa.feature.melspectrogram(
             y=src, sr=SR, hop_length=HOP_LEN,
-            n_fft=N_FFT, n_mels=N_MELS)**2)
+            n_fft=N_FFT, n_mels=N_MELS)
+    if power == 0:
+        ret = librosa.amplitude_to_db(mel)
+    elif power == 1:
+        ret = librosa.amplitude_to_db(mel**2)
+    elif power == 2:
+        ret = librosa.power_to_db(mel)
     return ret
 
 

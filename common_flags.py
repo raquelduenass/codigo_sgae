@@ -19,9 +19,9 @@ gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
 
 # Files
-gflags.DEFINE_string('experiment_rootdir', "./models/test_3", 'Folder '
+gflags.DEFINE_string('experiment_rootdir', "./models/test_4", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "./data/music_speech",
+gflags.DEFINE_string('data_path', "./data/mixed",
                      'Folder containing the whole dataset')
 gflags.DEFINE_string('demo_path', "./data/muspeak",
                      'Folder containing the demo dataset')

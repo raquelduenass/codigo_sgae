@@ -28,6 +28,7 @@ def _main():
     
     # Iterator object containing testing data to be generated batch by batch
     test_generator = test_datagen.flow_from_directory(num_classes,
+                                                      power,
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)

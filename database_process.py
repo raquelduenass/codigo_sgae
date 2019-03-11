@@ -101,33 +101,52 @@ def create_database(root_data_path, separated, separation):
     
     return
 
-def classes_combination(root_data_path, music_pct):
+def classes_combination(root_data_path, equal, combs, speech_pct):
     
     classes = os.listdir(root_data_path)
-    speech_path = os.path.join(root_data_path, classes[2])
-    music_path = os.path.join(root_data_path, classes[1])
+    speech_path = os.path.join(root_data_path, classes[combs[1]])
+    music_path = os.path.join(root_data_path, classes[combs[0]])
     speech_files = [os.path.join(speech_path, i) for i in os.listdir(speech_path)]
     music_files = [os.path.join(music_path, i) for i in os.listdir(music_path)]
-    
-    for i in range(len(os.listdir(music_path))):
+    j = 0
+    for i in range(len(os.listdir(speech_path))):
+        print(i)
         speech, sr_speech = librosa.load(speech_files[i])
-        music, sr_music = librosa.load(music_files[i])
-        comb = (1-music_pct)*speech+music_pct*music
-        comb_scaled = comb/np.max(np.abs(comb))
-        output_path = os.path.join(root_data_path, 'music_speech_wav',
-                                   'comb_'+str(i)+'.wav')
-        wavfile.write(output_path, sr_music, comb_scaled)
+        music, sr_music = librosa.load(music_files[j])
+        speech = librosa.resample(speech, sr_speech, sr_music)
         
+        if equal:
+            j = j+1
+        else:
+            while len(music)<len(speech):
+                add_music, sr_add_music = librosa.load(music_files[j])
+                if not sr_music == sr_add_music:
+                    add_music = librosa.resample(add_music, sr_add_music, sr_music)
+                music = np.append(music, add_music)
+                j = j+1
+                if j>=len(music_files):
+                    j=0
+            music = music[0:len(speech)]
+            
+        
+        comb = speech_pct*speech+(1-speech_pct)*music
+        if combs[0]==0:
+            folder = 'music_speech'
+        elif combs[0]==2:
+            folder = 'speech_noise'
+        output_path = os.path.join(root_data_path, folder,
+                                   'comb_'+str(i)+'.wav')
+        wavfile.write(output_path, sr_music, comb)
+            
     return
 
 def labels_demo(data_path, file, num_classes):
     labels_old = utils.file_to_list(os.path.join(data_path, file), False)
     if num_classes == 3:
-        dct = {'0\n':'1', '1\n':'2'}
-#    if num_classes == :
-#        dct = {}
+        dct = {'1\n':'2'}
+    if num_classes == 4 or num_classes == 5:
+        dct = {'1\n':'3'}
     labels = list(map(dct.get, labels_old))
     utils.list_to_file(labels, os.path.join(data_path, 'labels'+str(num_classes)+'.txt'))
     return
 
-create_database('./data/mixed', True, 2)
