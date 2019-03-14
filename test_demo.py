@@ -22,6 +22,8 @@ def _main():
     
     # Output dimension (2 classes)
     num_classes = 3
+    sr = 22050
+    separation = 2
 
     # Generate testing data
     test_datagen = demo_utils.DataGenerator(rescale=1./255)
@@ -29,6 +31,8 @@ def _main():
     # Iterator object containing testing data to be generated batch by batch
     test_generator = test_datagen.flow_from_directory(num_classes,
                                                       power,
+                                                      sr,
+                                                      separation,
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)

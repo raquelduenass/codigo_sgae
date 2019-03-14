@@ -108,7 +108,7 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
     music_path = os.path.join(root_data_path, classes[combs[0]])
     speech_files = [os.path.join(speech_path, i) for i in os.listdir(speech_path)]
     music_files = [os.path.join(music_path, i) for i in os.listdir(music_path)]
-    j = 0
+    
     for i in range(len(os.listdir(speech_path))):
         print(i)
         speech, sr_speech = librosa.load(speech_files[i])

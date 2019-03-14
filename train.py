@@ -30,6 +30,7 @@ separation = 2
 overlap = 0
 music_pct = 0.2
 power = 1 # 0:amplitude, 1:energy, 2:power
+sr = 22050
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
@@ -155,11 +156,10 @@ def _main():
     tf.set_random_seed(seed)
     
     # Output dimension
-    num_classes = 5
+    num_classes = 4
      
-    database_process.classes_combination('./data/mixed', False, [0, 3], 0.8)
-    database_process.classes_combination('./data/mixed', False, [2, 3], 0.8)
-    database_process.create_database('./data/mixed', True, 2)
+    #database_process.classes_combination('./data/mixed', False, [2, 3], 0.8)
+    #database_process.create_database('./data/mixed', True, 2)
     
     if flag_dataset:
         database_process.classes_combination(FLAGS.data_path, music_pct)
@@ -175,8 +175,8 @@ def _main():
         os.makedirs(FLAGS.experiment_rootdir)
         
     # Split the database into training, validation and test sets
-    if FLAGS.initial_epoch == 0:
-        data_utils.cross_val_create(FLAGS.data_path)
+    #if FLAGS.initial_epoch == 0:
+    #    data_utils.cross_val_create(FLAGS.data_path)
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
@@ -188,6 +188,8 @@ def _main():
     train_generator = train_datagen.flow_from_directory('train',
                                                         num_classes,
                                                         power,
+                                                        sr, 
+                                                        separation,
                                                         shuffle = True,
                                                         target_size=(img_height, img_width),
                                                         batch_size = FLAGS.batch_size)
@@ -204,6 +206,8 @@ def _main():
     val_generator = val_datagen.flow_from_directory('val',
                                                     num_classes,
                                                     power,
+                                                    sr, 
+                                                    separation,
                                                     shuffle = False,
                                                     target_size=(img_height, img_width),
                                                     batch_size = FLAGS.batch_size)
