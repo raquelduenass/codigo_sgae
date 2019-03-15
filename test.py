@@ -11,6 +11,8 @@ from common_flags import FLAGS
 #♦ Constants
 TEST_PHASE = 1
 power = 1
+sr = 22050
+separation = 2
 #CLASSES = ['HM','M','H']
 CLASSES = ['M','HM','N','H']
 #CLASSES = ['M','HM','N','H' 'HN']
@@ -73,6 +75,7 @@ def _main():
     test_generator = test_datagen.flow_from_directory('test',
                                                       num_classes,
                                                       power,
+                                                      sr, separation,
                                                       shuffle = False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size = FLAGS.batch_size)

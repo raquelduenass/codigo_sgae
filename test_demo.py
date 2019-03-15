@@ -24,6 +24,7 @@ def _main():
     num_classes = 3
     sr = 22050
     separation = 2
+    power=2
 
     # Generate testing data
     test_datagen = demo_utils.DataGenerator(rescale=1./255)
@@ -84,7 +85,7 @@ def _main():
     new_dct = {0:'M',1:'M',2:'NM', 3:'NM'}
     labels = list(map(dct.get, pred_labels))
     softened = medfilt(labels, 9)
-    softened = medfilt(softened, 9)
+    softened = medfilt(softened, 15)
     soft_labels = list(map(new_dct.get, softened))
     
     # Accuracy after softening
@@ -95,8 +96,8 @@ def _main():
     music_pos, music_dur = utils.counting(soft_labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
-        print('Inicio: ',(music_pos[i]*separacion)//60, 'min ', int((music_pos[i]*separacion)%60),
-              'seg - Duración: ', music_dur[i]*separacion)
+        print('Inicio: ',(music_pos[i]*separation)//60, 'min ', int((music_pos[i]*separation)%60),
+              'seg - Duración: ', music_dur[i]*separation)
     
 def main(argv):
     # Utility main to load flags

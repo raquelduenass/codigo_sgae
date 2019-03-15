@@ -51,8 +51,8 @@ def softening(pred_labels):
     """
     labels = pred_labels
     silence_th = 4
-    music_th = 20
-    non_music_th = 20
+    music_th = 5
+    non_music_th = 5
     
     # Silence filtering:
     silence_pos, silence_len = counting(labels, 'S')
@@ -95,10 +95,11 @@ print('Initial accuracy: ', ave_accuracy)
 #labels = pred_labels
 dct = {'MH':0,'M':1,'H':2,'S':3}
 new_dct = {0:'M',1:'M',2:'NM', 3:'NM'}
+
 labels = list(map(dct.get, pred_labels))
-softened = medfilt(labels, 9)
-softened = medfilt(softened, 15)
-#softened = medfilt(softened, 21)
+softened = medfilt(labels, 5)
+softened = medfilt(softened, 7)
+softened = medfilt(softened, )
 softened = list(map(new_dct.get, softened))
 
 # Accuracy after softening

@@ -24,14 +24,6 @@ import database_process
 # Constants
 TRAIN_PHASE = 1
 
-# Dataset parameters
-flag_dataset = 0
-separation = 2
-overlap = 0
-music_pct = 0.2
-power = 1 # 0:amplitude, 1:energy, 2:power
-sr = 22050
-
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 def getModel(img_height, img_width, output_dim, weights_path):
@@ -71,19 +63,16 @@ def getModelResnet(n, version, img_height, img_width, output_dim, weights_path):
     # Returns
        model: A Model instance.
     """
-       
+    
+    input_shape = (img_height, img_width,1);
+    
     # Computed depth from supplied model parameter n
     if version == 1:
         depth = n * 6 + 2
+        model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth, num_classes=output_dim)
     elif version == 2:
         depth = n * 9 + 2
-    
-    input_shape = (img_height, img_width,1);
-
-    if version == 2:
-        model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth, num_classes=output_dim)
-    else:
-        model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth, num_classes=output_dim)
+        model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth, num_classes=output_dim)        
 
     # Model name, depth and version
     model_type = 'ResNet%dv%d' % (depth, version)
@@ -155,11 +144,16 @@ def _main():
     np.random.seed(seed)
     tf.set_random_seed(seed)
     
-    # Output dimension
+    # Parameters
     num_classes = 4
-     
-    #database_process.classes_combination('./data/mixed', False, [2, 3], 0.8)
-    #database_process.create_database('./data/mixed', True, 2)
+    flag_dataset = 0
+    separation = 2
+    #overlap = 0
+    music_pct = 0.8
+    power = 2 # 0:amplitude, 1:energy, 2:power
+    sr = 22050
+    n = 1
+    version = 2 # 1 o 2
     
     if flag_dataset:
         database_process.classes_combination(FLAGS.data_path, music_pct)
@@ -175,8 +169,8 @@ def _main():
         os.makedirs(FLAGS.experiment_rootdir)
         
     # Split the database into training, validation and test sets
-    #if FLAGS.initial_epoch == 0:
-    #    data_utils.cross_val_create(FLAGS.data_path)
+    if FLAGS.initial_epoch == 0:
+        data_utils.cross_val_create(FLAGS.data_path)
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
@@ -186,10 +180,8 @@ def _main():
     
     # Iterator object containing training data to be generated batch by batch
     train_generator = train_datagen.flow_from_directory('train',
-                                                        num_classes,
-                                                        power,
-                                                        sr, 
-                                                        separation,
+                                                        num_classes, power,
+                                                        sr, separation,
                                                         shuffle = True,
                                                         target_size=(img_height, img_width),
                                                         batch_size = FLAGS.batch_size)
@@ -204,10 +196,8 @@ def _main():
     
     # Iterator object containing validation data to be generated batch by batch
     val_generator = val_datagen.flow_from_directory('val',
-                                                    num_classes,
-                                                    power,
-                                                    sr, 
-                                                    separation,
+                                                    num_classes, power,
+                                                    sr, separation,
                                                     shuffle = False,
                                                     target_size=(img_height, img_width),
                                                     batch_size = FLAGS.batch_size)
@@ -229,10 +219,7 @@ def _main():
         initial_epoch = FLAGS.initial_epoch
 
     # Define model
-    n = 1
-    version = 2 # 1 o 2
-    model = getModelResnet(n, version, img_height, img_width,
-                           num_classes, weights_path)
+    model = getModelResnet(n, version, img_height, img_width, num_classes, weights_path)
     
     # Save the architecture of the network as png
     plot_arch_path = os.path.join(FLAGS.experiment_rootdir, 'architecture.png')

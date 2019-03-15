@@ -108,7 +108,7 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
     music_path = os.path.join(root_data_path, classes[combs[0]])
     speech_files = [os.path.join(speech_path, i) for i in os.listdir(speech_path)]
     music_files = [os.path.join(music_path, i) for i in os.listdir(music_path)]
-    
+    j=0
     for i in range(len(os.listdir(speech_path))):
         print(i)
         speech, sr_speech = librosa.load(speech_files[i])
@@ -127,7 +127,6 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
                 if j>=len(music_files):
                     j=0
             music = music[0:len(speech)]
-            
         
         comb = speech_pct*speech+(1-speech_pct)*music
         if combs[0]==0:
@@ -137,7 +136,6 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
         output_path = os.path.join(root_data_path, folder,
                                    'comb_'+str(i)+'.wav')
         wavfile.write(output_path, sr_music, comb)
-            
     return
 
 def labels_demo(data_path, file, num_classes):

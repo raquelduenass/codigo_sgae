@@ -70,9 +70,7 @@ class DirectoryIterator(Iterator):
         self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         
         # Number of samples in dataset
-        self.samples = len(self.filenames) 
-        self.segments = separate_audio(self.sr, self.moments, self.filenames)
-        self.silence_labels = ['' for x in range(self.samples)]
+        self.samples = len(self.filenames)
         
         # Check if dataset is empty            
         if self.samples == 0:
@@ -108,15 +106,14 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = compute_melgram(self.segments[j], self.sr, self.power, self.separation)
-            if silence_detection(x):
-                self.silence_labels[j] = 'S'
-            else:
-                # Data augmentation
-                x = self.image_data_generator.random_transform(x)
-                x = self.image_data_generator.standardize(x)
-                batch_x.append(np.resize(x,(100,100)))
-                indexes.append(j)
+            segment = separate_audio(self.sr, self.moments[j], self.filenames[j])
+            x = compute_melgram(segment, self.sr, self.power, self.separation)
+            
+            # Data augmentation
+            x = self.image_data_generator.random_transform(x)
+            x = self.image_data_generator.standardize(x)
+            batch_x.append(np.resize(x,(100,100)))
+            indexes.append(j)
 
         # Build batch of labels
         batch_y = np.array(self.ground_truth[indexes], dtype=K.floatx())
@@ -131,8 +128,9 @@ def cross_val_create(data_path):
     filenames = utils.file_to_list(os.path.join(FLAGS.data_path,'data.txt'), False)
     moments = utils.file_to_list(os.path.join(FLAGS.data_path,'moments.txt'), False)
     labels = utils.file_to_list(os.path.join(FLAGS.data_path,'labels.txt'), False)
-        
-    order = np.asarray(shuffle(list(range(len(filenames)))))
+    order = list(range(len(filenames)))
+    shuffle(order)
+    order = np.asarray(order)
     index4 = int(round(len(order)/4))
     index2 = int(round(len(order)/2))
     
@@ -166,13 +164,11 @@ def cross_val_load(dirs_file, moments_file, labels_file):
         
     return dirs_list, moments_list, np.array(labels_list, dtype= K.floatx())
 
-def separate_audio(sr, moments, files):
-    segments = []
-    for j in range(len(files)):
-        audio, sr_old = librosa.load(files[j].split('\n')[0])
-        audio = librosa.resample(audio, sr_old, sr)
-        segments.append(audio[int(moments[j])*sr:(int(moments[j])+1)*sr])
-    return segments
+def separate_audio(sr, moment, file):
+    audio, sr_old = librosa.load(file.split('\n')[0])
+    audio = librosa.resample(audio, sr_old, sr)
+    segment = audio[int(moment)*sr:(int(moment)+1)*sr]
+    return segment
 
 def compute_melgram(src, sr, power, dura):
     ''' Compute a mel-spectrogram and returns it in a shape of (96,), where
@@ -197,8 +193,3 @@ def compute_melgram(src, sr, power, dura):
 #    elif power == 2:
     ret = librosa.power_to_db(mel)
     return ret
-
-def silence_detection(audio_slice):
-    silence_thresh = -16
-    silence = librosa.feature.rmse(audio_slice) <= silence_thresh
-    return silence
