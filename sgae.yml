@@ -1,0 +1,55 @@
+name: sgae
+channels:
+  - defaults
+dependencies:
+  - ca-certificates=2019.1.23=0
+  - certifi=2019.3.9=py37_0
+  - openssl=1.1.1b=he774522_1
+  - pip=19.0.3=py37_0
+  - python=3.7.2=h8c8aaf0_10
+  - setuptools=40.8.0=py37_0
+  - sqlite=3.27.2=he774522_0
+  - vc=14.1=h0510ff6_4
+  - vs2015_runtime=14.15.26706=h3a45250_0
+  - wheel=0.33.1=py37_0
+  - wincertstore=0.2=py37_0
+  - pip:
+    - absl-py==0.7.1
+    - astor==0.7.1
+    - audioread==2.1.6
+    - cycler==0.10.0
+    - decorator==4.4.0
+    - gast==0.2.2
+    - grpcio==1.19.0
+    - h5py==2.9.0
+    - joblib==0.13.2
+    - keras==2.2.4
+    - keras-applications==1.0.7
+    - keras-preprocessing==1.0.9
+    - kiwisolver==1.0.1
+    - librosa==0.6.3
+    - llvmlite==0.28.0
+    - markdown==3.0.1
+    - matplotlib==3.0.3
+    - mock==2.0.0
+    - numba==0.43.0
+    - numpy==1.16.2
+    - pbr==5.1.3
+    - protobuf==3.7.0
+    - pydub==0.23.1
+    - pyparsing==2.3.1
+    - python-dateutil==2.8.0
+    - python-gflags==3.1.2
+    - pyyaml==5.1
+    - resampy==0.2.1
+    - scikit-learn==0.20.3
+    - scipy==1.2.1
+    - six==1.12.0
+    - sklearn==0.0
+    - tensorboard==1.13.1
+    - tensorflow-estimator==1.13.0
+    - tensorflow-gpu==1.13.1
+    - termcolor==1.1.0
+    - werkzeug==0.14.1
+prefix: C:\Users\cda\Anaconda3\envs\sgae
+

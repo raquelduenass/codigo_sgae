@@ -8,8 +8,7 @@ from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras.callbacks import ReduceLROnPlateau
 from keras.callbacks import TensorBoard
-from keras.utils import plot_model
-from keras import backend as K
+from keras import backend as k
 
 import logz
 import nets
@@ -26,11 +25,13 @@ TRAIN_PHASE = 1
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
-def getModel(img_height, img_width, output_dim, weights_path):
+
+
+def get_model(img_height, img_width, output_dim, weights_path):
     """
     Initialize model.
     # Arguments
-       img_width: Target image widht.
+       img_width: Target image width.
        img_height: Target image height.
        num_img: Target images per block
        output_dim: Dimension of model output (number of classes).
@@ -38,24 +39,23 @@ def getModel(img_height, img_width, output_dim, weights_path):
     # Returns
        model: A Model instance.
     """
-    model = nets.resnet50(img_height, img_width, output_dim)
-    
+    model = nets.resnet50(img_height, img_width, 1, output_dim)
     if weights_path:
         try:
             model.load_weights(weights_path)
             print("Loaded model from {}".format(weights_path))
-        except:
+        except ImportError:
             print("Impossible to find weight path. Returning untrained model")
-
     return model
 
-def getModelResnet(n, version, img_height, img_width, output_dim, weights_path):
+
+def get_model_res_net(n, version, img_height, img_width, output_dim, weights_path):
     """
     Initialize model.
     # Arguments
        n: parameter that determines the net depth.
-       version: 1 for resnet v1 or 2 for v2.
-       img_width: Target image widht.
+       version: 1 for ResNet v1 or 2 for v2.
+       img_width: Target image width.
        img_height: Target image height.
        num_img: Target images per block
        output_dim: Dimension of model output (number of classes).
@@ -64,13 +64,13 @@ def getModelResnet(n, version, img_height, img_width, output_dim, weights_path):
        model: A Model instance.
     """
     
-    input_shape = (img_height, img_width,1);
+    input_shape = (img_height, img_width, 1)
     
     # Computed depth from supplied model parameter n
     if version == 1:
         depth = n * 6 + 2
         model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth, num_classes=output_dim)
-    elif version == 2:
+    else:
         depth = n * 9 + 2
         model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth, num_classes=output_dim)        
 
@@ -83,12 +83,13 @@ def getModelResnet(n, version, img_height, img_width, output_dim, weights_path):
         try:
             model.load_weights(weights_path)
             print("Loaded model from {}".format(weights_path))
-        except:
+        except ImportError:
             print("Impossible to find weight path. Returning untrained model")
 
     return model
-    
-def trainModel(train_data_generator, val_data_generator, model, initial_epoch):
+
+
+def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     """
     Model training.
     # Arguments
@@ -99,17 +100,17 @@ def trainModel(train_data_generator, val_data_generator, model, initial_epoch):
     """
     # Configure training process
     model.compile(loss='categorical_crossentropy',
-              optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-              metrics=['categorical_accuracy'])
+                  optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
+                  metrics=['categorical_accuracy'])
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_rootdir, 'weights_{epoch:03d}.h5')
-    writeBestModel = ModelCheckpoint(filepath=weights_path, monitor='val_loss',
-                                     save_best_only=True, save_weights_only=True)
+    write_best_model = ModelCheckpoint(filepath=weights_path, monitor='val_loss',
+                                       save_best_only=True, save_weights_only=True)
 
     # Save training and validation losses.
     logz.configure_output_dir(FLAGS.experiment_rootdir)
-    saveModelAndLoss = log_utils.MyCallback(filepath=FLAGS.experiment_rootdir)
+    save_model_and_loss = log_utils.MyCallback(filepath=FLAGS.experiment_rootdir)
 
     # Train model
     steps_per_epoch = int(np.ceil(train_data_generator.samples / FLAGS.batch_size))
@@ -122,23 +123,24 @@ def trainModel(train_data_generator, val_data_generator, model, initial_epoch):
                                    patience=5,
                                    min_lr=0.5e-6)
     
-    # Save Tensorboard information
-    strTime = strftime("%Y%b%d_%Hh%Mm%Ss", localtime(time()))
-    tensorboard = TensorBoard(log_dir="logs/{}".format(strTime), histogram_freq=0)
-    callbacks = [writeBestModel, saveModelAndLoss, lr_reducer, lr_scheduler, tensorboard]
+    # Save Tensor board information
+    str_time = strftime("%Y%b%d_%Hh%Mm%Ss", localtime(time()))
+    tensor_board = TensorBoard(log_dir="logs/{}".format(str_time), histogram_freq=0)
+    callbacks = [write_best_model, save_model_and_loss, lr_reducer, lr_scheduler, tensor_board]
 
     model.fit_generator(train_data_generator,
-                        epochs=FLAGS.epochs, steps_per_epoch = steps_per_epoch,
+                        epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
                         callbacks=callbacks,
                         validation_data=val_data_generator,
-                        validation_steps = validation_steps,
+                        validation_steps=validation_steps,
                         initial_epoch=initial_epoch)
+
 
 def _main():
     
     # Set random seed
     if FLAGS.random_seed:
-        seed = np.random.randint(0,2*31-1)
+        seed = np.random.randint(0, 2*31-1)
     else:
         seed = 5
     np.random.seed(seed)
@@ -146,29 +148,28 @@ def _main():
     
     # Parameters
     num_classes = 4
-    flag_dataset = 0
+    flag_data = 0
     separation = 2
-    #overlap = 0
+    # overlap = 0
     music_pct = 0.8
-    power = 2 # 0:amplitude, 1:energy, 2:power
-    sr = 22050
     n = 1
-    version = 2 # 1 o 2
+    version = 2  # 1 o 2
     
-    if flag_dataset:
-        database_process.classes_combination(FLAGS.data_path, music_pct)
+    if flag_data:
+        database_process.classes_combination(FLAGS.data_path, False, [0, 1], music_pct)
         database_process.create_database(FLAGS.data_path, True, separation)
         database_process.create_database(FLAGS.demo_path, False, separation)
         database_process.labels_demo(FLAGS.demo_path, 'labels.txt', num_classes)
 
     # Set training phase
-    K.set_learning_phase(TRAIN_PHASE)
+    k.set_learning_phase(TRAIN_PHASE)
 
-    # Create the experiment rootdir if not already there: create a model if the name of the one in the parameters doesn't exist
+    # Create the experiment root dir if not already there:
+    # create a model if the name of the one in the parameters doesn't exist
     if not os.path.exists(FLAGS.experiment_rootdir):
         os.makedirs(FLAGS.experiment_rootdir)
         
-    # Split the database into training, validation and test sets
+    # Split the data into training, validation and test sets
     if FLAGS.initial_epoch == 0:
         data_utils.cross_val_create(FLAGS.data_path)
     
@@ -176,35 +177,30 @@ def _main():
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
     # Generate training data with real-time augmentation
-    train_datagen = data_utils.DataGenerator(rescale = 1./255)
+    train_data_gen = data_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing training data to be generated batch by batch
-    train_generator = train_datagen.flow_from_directory('train',
-                                                        num_classes, power,
-                                                        sr, separation,
-                                                        shuffle = True,
-                                                        target_size=(img_height, img_width),
-                                                        batch_size = FLAGS.batch_size)
+    train_generator = train_data_gen.flow_from_directory('train',
+                                                         shuffle=True,
+                                                         target_size=(img_height, img_width),
+                                                         batch_size=FLAGS.batch_size)
     
-    # Check if the number of classes in dataset corresponds to the one specified                                                    
+    # Check if the number of classes in data corresponds to the one specified
     assert train_generator.num_classes == num_classes, \
-                        " Not macthing output dimensions in training data."                                                   
+        " Not matching output dimensions in training data."
 
-    
     # Generate validation data with real-time augmentation
-    val_datagen = data_utils.DataGenerator(rescale = 1./255)
+    val_data_gen = data_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing validation data to be generated batch by batch
-    val_generator = val_datagen.flow_from_directory('val',
-                                                    num_classes, power,
-                                                    sr, separation,
-                                                    shuffle = False,
-                                                    target_size=(img_height, img_width),
-                                                    batch_size = FLAGS.batch_size)
+    val_generator = val_data_gen.flow_from_directory('val',
+                                                     shuffle=False,
+                                                     target_size=(img_height, img_width),
+                                                     batch_size=FLAGS.batch_size)
 
-    # Check if the number of classes in dataset corresponds to the one specified
+    # Check if the number of classes in data corresponds to the one specified
     assert val_generator.num_classes == num_classes, \
-                        " Not matching output dimensions in validation data."
+        " Not matching output dimensions in validation data."
           
     # Weights to restore
     weights_path = FLAGS.initial_weights
@@ -215,35 +211,33 @@ def _main():
         # In this case weights are initialized randomly
         weights_path = None
     else:
-        # In this case weigths are initialized as specified in pre-trained model
+        # In this case weights are initialized as specified in pre-trained model
         initial_epoch = FLAGS.initial_epoch
 
     # Define model
-    model = getModelResnet(n, version, img_height, img_width, num_classes, weights_path)
-    
-    # Save the architecture of the network as png
-    plot_arch_path = os.path.join(FLAGS.experiment_rootdir, 'architecture.png')
-    plot_model(model, to_file=plot_arch_path)
+    model = get_model_res_net(n, version, img_height, img_width, num_classes, weights_path)
 
     # Serialize model into json
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
     utils.modelToJson(model, json_model_path)
 
     # Train model
-    trainModel(train_generator, val_generator, model, initial_epoch)
+    train_model(train_generator, val_generator, model, initial_epoch)
     
     # Plot training and validation losses
     utils.plot_loss(FLAGS.experiment_rootdir)
 
+
 def main(argv):
     # Utility main to load flags
     try:
-      argv = FLAGS(argv)  # parse flags
+        argv = FLAGS(argv)  # parse flags
     except gflags.FlagsError:
-      print ('Usage: %s ARGS\\n%s' % (sys.argv[0], FLAGS))
+        print('Usage: %s ARGS\\n%s' % (sys.argv[0], FLAGS))
 
-      sys.exit(1)
+        sys.exit(1)
     _main()
+
 
 if __name__ == "__main__":
     main(sys.argv)

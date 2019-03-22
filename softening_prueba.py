@@ -4,20 +4,26 @@ Created on Mon Feb 25 12:04:27 2019
 
 @author: rds
 """
-def join_labels(pred, silence):
-    labels = ['' for x in range(50)]
-    j = 0
-    for i in range(len(pred)):
-        while silence[j] != '':
-            labels[j] = 'S'
-            j = j+1
-        labels[j] = pred[i]
-        j = j+1
+import json
+from sklearn import metrics
+from scipy.signal import medfilt
+
+
+def join_labels(prediction, silence):
+    labels = ['']*50
+    k = 0
+    for i in range(len(prediction)):
+        while silence[k] != '':
+            labels[k] = 'S'
+            k = k+1
+        labels[k] = prediction[i]
+        k = k+1
     return labels
 
+
 def counting(data, label):
-    loc = [i for i in range(len(data)) if data[i]==label]
-    if not(len(loc)==0):
+    loc = [i for i in range(len(data)) if data[i] == label]
+    if not(len(loc) == 0):
         pos = [loc[0]] + [loc[i+1] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
         fin = [loc[i] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
         fin.append(loc[-1])
@@ -27,88 +33,86 @@ def counting(data, label):
         length = []
     return pos, length
 
+
 def soft_apply(labels, pos, length, th):
-    if not(len(pos)==0):
+    if not(len(pos) == 0):
         for i in range(len(pos)):
-            if length[i]<th:
-                if not(len(labels)<=pos[i]+length[i]):
-                    if labels[pos[i]-1]==labels[pos[i]+length[i]+1]:
+            if length[i] < th:
+                if not(len(labels) <= pos[i]+length[i]):
+                    if labels[pos[i]-1] == labels[pos[i]+length[i]+1]:
                         labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
                     else:
-                        add = length[i]%2
+                        add = length[i] % 2
                         labels[pos[i]:(pos[i]+int(length[i]/2))] = [labels[pos[i]-1]]*(int(length[i]/2)+add)
-                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] = [labels[pos[i]+length[i]]]*(int(length[i]/2))
+                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] =\
+                            [labels[pos[i]+length[i]]]*(int(length[i]/2))
                 else:
-                    if length[i]>1:
+                    if length[i] > 1:
                         labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
                     else:
                         labels[pos[i]] = labels[pos[i]-1]
     return labels
 
-def softening(pred_labels):
+
+def softening(labels):
     
     """
     """
-    labels = pred_labels
     silence_th = 4
     music_th = 5
     non_music_th = 5
     
     # Silence filtering:
-    silence_pos, silence_len = counting(labels, 'S')
-    labels = soft_apply(labels, silence_pos, silence_len, silence_th)
+    pos, length = counting(labels, 'S')
+    labels = soft_apply(labels, pos, length, silence_th)
             
-    # Standarization of classes
+    # Standardization of classes
     for i in range(len(labels)):
-        if not (labels[i]== 'M'):
-            labels[i]='NM'
+        if not (labels[i] == 'M'):
+            labels[i] = 'NM'
            
     # Softening non-music class
-    non_music_pos, non_music_len = counting(labels,'NM')
-    labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
+    pos, length = counting(labels, 'NM')
+    labels = soft_apply(labels, pos, length, non_music_th)
     
     # Softening music class
-    music_pos, music_len = counting(labels,'M')
-    labels = soft_apply(labels, music_pos, music_len, music_th)
+    pos, length = counting(labels, 'M')
+    labels = soft_apply(labels, pos, length, music_th)
     
     return labels
 
-import json
-from sklearn import metrics
-from scipy.signal import medfilt
 
 with open('./models/test_3/demo_predicted_and_real_labels.json') as f:
-    data = json.load(f)
-pred_labels = data['pred_labels']
-real_labels = data['real_labels']
-separacion = 2
+    file_data = json.load(f)
+predicted_labels = file_data['pred_labels']
+real_labels = file_data['real_labels']
+separation = 2
 
 # Standardize real labels
-for i in range(len(real_labels)):
-    if not (real_labels[i]== 'M'):
-        real_labels[i]='NM'
+for j in range(len(real_labels)):
+    if not (real_labels[j] == 'M'):
+        real_labels[j] = 'NM'
         
 # Accuracy before softening
-ave_accuracy = metrics.accuracy_score(real_labels,pred_labels)
+ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
 print('Initial accuracy: ', ave_accuracy)
 
-#labels = pred_labels
-dct = {'MH':0,'M':1,'H':2,'S':3}
-new_dct = {0:'M',1:'M',2:'NM', 3:'NM'}
+dct = {'MH': 0, 'M': 1, 'H': 2, 'S': 3}
+new_dct = {0: 'M', 1: 'M', 2: 'NM', 3: 'NM'}
 
-labels = list(map(dct.get, pred_labels))
-softened = medfilt(labels, 5)
+new_labels = list(map(dct.get, predicted_labels))
+softened = medfilt(new_labels, 5)
 softened = medfilt(softened, 7)
 softened = medfilt(softened, )
 softened = list(map(new_dct.get, softened))
 
 # Accuracy after softening
-ave_accuracy = metrics.accuracy_score(real_labels,softened)
+ave_accuracy = metrics.accuracy_score(real_labels, softened)
 print('Softening accuracy: ', ave_accuracy)
 
 # Detection of beginning of music
 music_pos, music_dur = counting(softened, 'M')
 print('Music detected in:')
-for i in range(len(music_pos)):
-    print('Inicio: ',(music_pos[i]*separacion)//60, 'min ', int((music_pos[i]*separacion)%60), 'seg - Duración: ', music_dur[i]*separacion)
-    
+for j in range(len(music_pos)):
+    print('Beginning: ', (music_pos[j]*separation)//60, 'min ', int((music_pos[j]*separation) % 60), 'seg - Duration: ',
+          music_dur[j]*separation)

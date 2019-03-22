@@ -3,21 +3,22 @@ import numpy as np
 import os
 import sys
 from sklearn import metrics
-from keras import backend as K
+from keras import backend as k
 import utils
 import data_utils
 from common_flags import FLAGS 
 
-#♦ Constants
+# ♦ Constants
 TEST_PHASE = 1
 power = 1
 sr = 22050
 separation = 2
-#CLASSES = ['HM','M','H']
-CLASSES = ['M','HM','N','H']
-#CLASSES = ['M','HM','N','H' 'HN']
+# CLASSES = ['HM','M','H']
+CLASSES = ['M', 'HM', 'N', 'H']
+# CLASSES = ['M','HM','N','H' 'HN']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
+
 
 def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
     """
@@ -36,6 +37,7 @@ def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
     highest_errors = dist.argsort()[-n_errors:][::-1]
     return highest_errors
 
+
 def evaluate_classification(pred_probs, pred_labels, real_labels):
     """
     Evaluate some classification metrics. Compute average accuracy and highest
@@ -52,18 +54,18 @@ def evaluate_classification(pred_probs, pred_labels, real_labels):
     print('Average accuracy = ', ave_accuracy)
     
     # Compute highest errors
-    highest_errors = compute_highest_classification_errors(pred_probs, real_labels,
-            n_errors=20)
+    highest_errors = compute_highest_classification_errors(pred_probs, real_labels, n_errors=20)
     
     # Return accuracy and highest errors in a dictionary
     dictionary = {"ave_accuracy": ave_accuracy.tolist(),
                   "highest_errors": highest_errors.tolist()}
     return dictionary
 
+
 def _main():
 
     # Set testing mode (dropout/batchnormalization)
-    K.set_learning_phase(TEST_PHASE)
+    k.set_learning_phase(TEST_PHASE)
     
     # Output dimension (2 classes)
     num_classes = 3
@@ -76,9 +78,9 @@ def _main():
                                                       num_classes,
                                                       power,
                                                       sr, separation,
-                                                      shuffle = False,
+                                                      shuffle=False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
-                                                      batch_size = FLAGS.batch_size)
+                                                      batch_size=FLAGS.batch_size)
     
     # Load json and create model
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
@@ -99,7 +101,7 @@ def _main():
     n_samples = test_generator.samples
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
     probs_per_class, ground_truth = utils.compute_predictions_and_gt(
-            model, test_generator, nb_batches, verbose = 1)
+            model, test_generator, nb_batches, verbose=1)
     
     # Predicted probabilities
     pred_probs = np.max(probs_per_class, axis=-1)
@@ -119,22 +121,24 @@ def _main():
 
     # Save predicted and real steerings as a dictionary
     labels_dict = {'pred_labels': pred_labels.tolist(),
-                  'real_labels': real_labels.tolist()}
+                   'real_labels': real_labels.tolist()}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
-                                               'predicted_and_real_labels.json'))
+                                                  'predicted_and_real_labels.json'))
                                                
     # Visualize confusion matrix                                           
     utils.plot_confusion_matrix('test', FLAGS.experiment_rootdir, real_labels,
                                 pred_labels, CLASSES, normalize=True)
-                                               
+
+
 def main(argv):
     # Utility main to load flags
     try:
-      argv = FLAGS(argv)  # parse flags
+        argv = FLAGS(argv)  # parse flags
     except gflags.FlagsError:
-      print ('Usage: %s ARGS\\n%s' % (sys.argv[0], FLAGS))
-      sys.exit(1)
+        print('Usage: %s ARGS\\n%s' % (sys.argv[0], FLAGS))
+        sys.exit(1)
     _main()
+
 
 if __name__ == "__main__":
     main(sys.argv)

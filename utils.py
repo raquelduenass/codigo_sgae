@@ -11,8 +11,7 @@ from sklearn.metrics import confusion_matrix
 
 
 def compute_predictions_and_gt(model, generator, steps,
-                                     max_q_size=10,
-                                     pickle_safe=False, verbose=1):
+                               verbose=1):
     """
     Generate predictions and associated ground truth for the input samples
     from a data generator. The generator should return the same kind of data as
@@ -73,17 +72,10 @@ def compute_predictions_and_gt(model, generator, steps,
             gt_steer = [gt_steer]
 
         if not all_outs:
-            for out in outs:
-            # Len of this list is related to the number of
-            # outputs per model(1 in our case)
-                all_outs.append([])
+            all_outs = []*len(outs)
 
         if not all_steerings:
-            # Len of list related to the number of gt_steerings
-            # per model (1 in our case )
-            for steer in gt_steer:
-                all_steerings.append([])
-
+            all_steerings = []*len(gt_steer)
 
         for i, out in enumerate(outs):
             all_outs[i].append(out)
@@ -101,9 +93,8 @@ def compute_predictions_and_gt(model, generator, steps,
         return np.squeeze(np.array([np.concatenate(out) for out in all_outs])), \
                 np.squeeze(np.array([np.concatenate(steer) for steer in all_steerings]))
 
-def compute_predictions(model, generator, steps,
-                                     max_q_size=10,
-                                     pickle_safe=False, verbose=0):
+
+def compute_predictions(model, generator, steps, verbose=0):
     """
     Generate predictions and associated ground truth for the input samples
     from a data generator. The generator should return the same kind of data as
@@ -162,10 +153,9 @@ def compute_predictions(model, generator, steps,
             outs = [outs]
 
         if not all_outs:
-            for out in outs:
             # Len of this list is related to the number of
             # outputs per model(1 in our case)
-                all_outs.append([])
+            all_outs = []*len(outs)
 
         for i, out in enumerate(outs):
             all_outs[i].append(out)
@@ -186,7 +176,7 @@ def modelToJson(model, json_model_path):
     """
     model_json = model.to_json()
 
-    with open(json_model_path,"w") as f:
+    with open(json_model_path, "w") as f:
         f.write(model_json)
 
 
@@ -201,14 +191,14 @@ def jsonToModel(json_model_path):
     return model
 
 
-def list_to_file(data, fname):
-    with open(fname, 'w') as f:
+def list_to_file(data, f_name):
+    with open(f_name, 'w') as f:
         for item in data:
             f.write("%s\n" % item)
 
 
-def file_to_list(fname, skip):
-    with open(fname, 'r') as f:
+def file_to_list(f_name, skip):
+    with open(f_name, 'r') as f:
         data = f.readlines()
     if skip:
         data_s = []
@@ -219,13 +209,13 @@ def file_to_list(fname, skip):
         return data
     
 
-def write_to_file(dictionary, fname):
+def write_to_file(dictionary, f_name):
     """
     Writes everything is in a dictionary in json model.
     """
-    with open(fname, "w") as f:
-        json.dump(dictionary,f)
-        print("Written file {}".format(fname))
+    with open(f_name, "w") as f:
+        json.dump(dictionary, f)
+        print("Written file {}".format(f_name))
         
         
 def plot_loss(path_to_log):
@@ -238,21 +228,20 @@ def plot_loss(path_to_log):
     # Read log file
     log_file = os.path.join(path_to_log, "log.txt")
     try:
-        log = np.genfromtxt(log_file, delimiter='\t',dtype=None, names=True)
+        log = np.genfromtxt(log_file, delimiter='\t', dtype=None, names=True)
     except:
         raise IOError("Log file not found")
 
     train_loss = log['train_loss']
     val_loss = log['val_loss']
-    timesteps = list(range(train_loss.shape[0]))
+    time_steps = list(range(train_loss.shape[0]))
     
     # Plot losses
-    plt.plot(timesteps, train_loss, 'r--', timesteps, val_loss, 'b--')
+    plt.plot(time_steps, train_loss, 'r--', time_steps, val_loss, 'b--')
     plt.legend(["Training loss", "Validation loss"])
     plt.ylabel('Loss')
     plt.xlabel('Epochs')
     plt.savefig(os.path.join(path_to_log, "log.png"))
-    #plt.show()
     
     
 def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, classes,
@@ -280,7 +269,7 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, float('%.3f'%(cm[i, j])),
+        plt.text(j, i, float('%.3f' % (cm[i, j])),
                  horizontalalignment="center")
     
     plt.tight_layout()
@@ -290,22 +279,22 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         plt.savefig(os.path.join(path_to_results, "confusion.png"))
     elif phase == 'outer_test':
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
-    #plt.show()
 
 
 def soft_apply(labels, pos, length, th):
-    if not(len(pos)==0):
+    if not(len(pos) == 0):
         for i in range(len(pos)):
-            if length[i]<th:
-                if not(len(labels)<=pos[i]+length[i]):
-                    if labels[pos[i]-1]==labels[pos[i]+length[i]+1]:
+            if length[i] < th:
+                if not(len(labels) <= pos[i]+length[i]):
+                    if labels[pos[i]-1] == labels[pos[i]+length[i]+1]:
                         labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
                     else:
-                        add = length[i]%2
+                        add = length[i] % 2
                         labels[pos[i]:(pos[i]+int(length[i]/2))] = [labels[pos[i]-1]]*(int(length[i]/2)+add)
-                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] = [labels[pos[i]+length[i]]]*(int(length[i]/2))
+                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] =\
+                            [labels[pos[i]+length[i]]]*(int(length[i]/2))
                 else:
-                    if length[i]>1:
+                    if length[i] > 1:
                         labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
                     else:
                         labels[pos[i]] = labels[pos[i]-1]
@@ -327,23 +316,23 @@ def softening(pred_labels):
             
     # Standarization of classes
     for i in range(len(labels)):
-        if not (labels[i]== 'M'):
-            labels[i]='NM'
+        if not (labels[i] == 'M'):
+            labels[i] = 'NM'
             
     # Softening non-music class
-    non_music_pos, non_music_len = counting(labels,'NM')
+    non_music_pos, non_music_len = counting(labels, 'NM')
     labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
     
     # Softening music class
-    music_pos, music_len = counting(labels,'M')
+    music_pos, music_len = counting(labels, 'M')
     labels = soft_apply(labels, music_pos, music_len, music_th)
     
     return labels
 
 
 def counting(data, label):
-    loc = [i for i in range(len(data)) if data[i]==label]
-    if not(len(loc)==0):
+    loc = [i for i in range(len(data)) if data[i] == label]
+    if not(len(loc) == 0):
         pos = [loc[0]] + [loc[i+1] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
         fin = [loc[i] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
         fin.append(loc[-1])

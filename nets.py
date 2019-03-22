@@ -3,6 +3,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten, Input
 from keras.layers import Conv2D, MaxPooling2D
 from keras.applications.resnet50 import ResNet50
 
+
 def gesture_net(img_width, img_height, img_channels, output_dim):
     """
     Define model architecture.
@@ -20,33 +21,33 @@ def gesture_net(img_width, img_height, img_channels, output_dim):
     # Input
     img_input = Input(shape=(img_height, img_width, img_channels))
     
-    x = Conv2D(32, (5, 5), strides=[3,3], padding='valid')(img_input)
+    x = Conv2D(32, (5, 5), strides=[3, 3], padding='valid')(img_input)
     x = Activation('relu')(x)
-    x = Conv2D(32, (3, 3), strides=[2,2], padding='valid')(x)
+    x = Conv2D(32, (3, 3), strides=[2, 2], padding='valid')(x)
     x = Activation('relu')(x) 
-    x = MaxPooling2D(pool_size=(2, 2), strides=[2,2])(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=[2, 2])(x)
     x = Dropout(0.25)(x)
     
-    x = Conv2D(64, (3, 3), strides=[1,1], padding='valid')(x)
+    x = Conv2D(64, (3, 3), strides=[1, 1], padding='valid')(x)
     x = Activation('relu')(x)
-    x = Conv2D(64, (3, 3), strides=[1,1], padding='same')(x)
+    x = Conv2D(64, (3, 3), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=[2,2])(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=[2, 2])(x)
     x = Dropout(0.25)(x)
     
-    x = Conv2D(128, (5, 5), strides=[1,1], padding='same')(x)
+    x = Conv2D(128, (5, 5), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = Conv2D(128, (3, 3), strides=[1,1], padding='same')(x)
+    x = Conv2D(128, (3, 3), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=[2,2])(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=[2, 2])(x)
     
-    x = Conv2D(256, (3, 3), strides=[1,1], padding='same')(x)
+    x = Conv2D(256, (3, 3), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = Conv2D(256, (3, 3), strides=[1,1], padding='same')(x)
+    x = Conv2D(256, (3, 3), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = Conv2D(256, (3, 3), strides=[1,1], padding='same')(x)
+    x = Conv2D(256, (3, 3), strides=[1, 1], padding='same')(x)
     x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=[2,2])(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=[2, 2])(x)
     x = Dropout(0.25)(x)
     
     x = Flatten()(x)
@@ -65,7 +66,8 @@ def gesture_net(img_width, img_height, img_channels, output_dim):
     print(model.summary())
 
     return model
-    
+
+
 def resnet50(img_width, img_height, img_channels, output_dim):
     """
     Define model architecture.
