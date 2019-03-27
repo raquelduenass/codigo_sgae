@@ -8,6 +8,7 @@ from keras.utils.generic_utils import Progbar
 from keras.models import model_from_json
 
 from sklearn.metrics import confusion_matrix
+from collections import Counter
 
 
 def compute_predictions_and_gt(model, generator, steps,
@@ -72,10 +73,12 @@ def compute_predictions_and_gt(model, generator, steps,
             gt_steer = [gt_steer]
 
         if not all_outs:
-            all_outs = []*len(outs)
+            for out in outs:
+                all_outs.append([])
 
         if not all_steerings:
-            all_steerings = []*len(gt_steer)
+            for steer in gt_steer:
+                all_steerings.append([])
 
         for i, out in enumerate(outs):
             all_outs[i].append(out)
@@ -281,55 +284,6 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
 
 
-def soft_apply(labels, pos, length, th):
-    if not(len(pos) == 0):
-        for i in range(len(pos)):
-            if length[i] < th:
-                if not(len(labels) <= pos[i]+length[i]):
-                    if labels[pos[i]-1] == labels[pos[i]+length[i]+1]:
-                        labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
-                    else:
-                        add = length[i] % 2
-                        labels[pos[i]:(pos[i]+int(length[i]/2))] = [labels[pos[i]-1]]*(int(length[i]/2)+add)
-                        labels[(pos[i]+int(length[i]/2)):pos[i]+length[i]] =\
-                            [labels[pos[i]+length[i]]]*(int(length[i]/2))
-                else:
-                    if length[i] > 1:
-                        labels[pos[i]:(pos[i]+length[i])] = [labels[pos[i]-1]]*(length[i])
-                    else:
-                        labels[pos[i]] = labels[pos[i]-1]
-    return labels
-
-
-def softening(pred_labels):
-    
-    """
-    """
-    labels = pred_labels
-    silence_th = 4
-    music_th = 5
-    non_music_th = 4
-    
-    # Silence filtering:
-    silence_pos, silence_len = counting(labels, 'S')
-    labels = soft_apply(labels, silence_pos, silence_len, silence_th)
-            
-    # Standarization of classes
-    for i in range(len(labels)):
-        if not (labels[i] == 'M'):
-            labels[i] = 'NM'
-            
-    # Softening non-music class
-    non_music_pos, non_music_len = counting(labels, 'NM')
-    labels = soft_apply(labels, non_music_pos, non_music_len, non_music_th)
-    
-    # Softening music class
-    music_pos, music_len = counting(labels, 'M')
-    labels = soft_apply(labels, music_pos, music_len, music_th)
-    
-    return labels
-
-
 def counting(data, label):
     loc = [i for i in range(len(data)) if data[i] == label]
     if not(len(loc) == 0):
@@ -351,3 +305,15 @@ def join_labels(pred, silence):
         silence[j] = pred[i]
         j = j+1
     return silence
+
+
+def soft_max(pred, wind_len):
+    soft = []
+    for i in range(len(pred)):
+        if i < wind_len//2:
+            soft.append(Counter(pred[0:i+wind_len//2]).most_common(1)[0][0])
+        elif i > len(pred)-1-wind_len//2:
+            soft.append(Counter(pred[i-wind_len//2:len(pred)-1]).most_common(1)[0][0])
+        else:
+            soft.append(Counter(pred[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
+    return soft

@@ -6,26 +6,27 @@ import utils
 import demo_utils
 from sklearn import metrics
 from keras import backend as k
-from common_flags import FLAGS 
-from scipy.signal import medfilt
+from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['MH', 'M', 'H']
+CLASSES = ['M', 'MH', 'N', 'H']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
 def _main():
 
-    # Set testing mode (dropout/batchnormalization)
+    # Set testing mode (dropout/batch normalization)
     k.set_learning_phase(TEST_PHASE)
     
-    # Output dimension (2 classes)
-    num_classes = 3
+    # Output dimension
+    num_classes = 4
     sr = 22050
     separation = 2
     power = 2
+    overlap = 0
+    wind_len = 5
 
     # Generate testing data
     test_datagen = demo_utils.DataGenerator(rescale=1./255)
@@ -35,6 +36,7 @@ def _main():
                                                       power,
                                                       sr,
                                                       separation,
+                                                      overlap,
                                                       shuffle=False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size=FLAGS.batch_size)
@@ -44,7 +46,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_3/weights_019.h5')
+    weights_load_path = os.path.abspath('./models/test_4/weights_011.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -60,7 +62,7 @@ def _main():
     probs_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose=1)
     
-    # Prediced labels
+    # Predicted labels
     silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(probs_per_class, axis=-1)]
     pred_labels = utils.join_labels(classes, silence_labels)
@@ -81,12 +83,7 @@ def _main():
     print('Initial accuracy: ', ave_accuracy)
     
     # Class softening
-    dct = {'MH': 0, 'M': 1, 'H': 2, 'S': 3}
-    new_dct = {0: 'M', 1: 'M', 2: 'NM', 3: 'NM'}
-    labels = list(map(dct.get, pred_labels))
-    softened = medfilt(labels, 9)
-    softened = medfilt(softened, 15)
-    soft_labels = list(map(new_dct.get, softened))
+    soft_labels = utils.soft_max(pred_labels, wind_len)
     
     # Accuracy after softening
     ave_accuracy = metrics.accuracy_score(real_labels, soft_labels)
@@ -96,8 +93,14 @@ def _main():
     music_pos, music_dur = utils.counting(soft_labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
-        print('Beginning: ', (music_pos[i]*separation)//60, 'min ', int((music_pos[i]*separation) % 60),
-              'seg - Duration: ', music_dur[i]*separation)
+        if overlap == 0:
+            print('Beginning: ', (music_pos[i] * separation) // 60, 'min ',
+                  int((music_pos[i] * separation) % 60),
+                  'seg - Duration: ', music_dur[i] * separation)
+        else:
+            print('Beginning: ', (music_pos[i]*overlap*separation)//60, 'min ',
+                  int((music_pos[i]*overlap*separation) % 60),
+                  'seg - Duration: ', music_dur[i]*separation)
     
     # ARREGLAR#################################################################
     ############################################################################

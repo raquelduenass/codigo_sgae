@@ -68,16 +68,13 @@ def _main():
     k.set_learning_phase(TEST_PHASE)
     
     # Output dimension (2 classes)
-    num_classes = 3
+    num_classes = 4
 
     # Generate testing data
     test_datagen = data_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
     test_generator = test_datagen.flow_from_directory('test',
-                                                      num_classes,
-                                                      power,
-                                                      sr, separation,
                                                       shuffle=False,
                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
                                                       batch_size=FLAGS.batch_size)
@@ -87,7 +84,7 @@ def _main():
     model = utils.jsonToModel(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_3/weights_019.h5')
+    weights_load_path = os.path.abspath('./models/test_4/weights_019.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))

@@ -12,17 +12,17 @@ import librosa
 
 class DataGenerator(ImageDataGenerator):
     """
-    Generate minibatches of images and labels with real-time augmentation.
+    Generate mini-batches of images and labels with real-time augmentation.
     The only function that changes w.r.t. parent class is the flow that
     generates data. This function needed in fact adaptation for different
     directory structure and labels. All the remaining functions remain
     unchanged.
     """
-    # SE REESCRIBE ESTA FUNCION, TODAS LAS DEMAS SE HEREDAN DE IMAGEDATAGENERATOR DE KERAS
-    def flow_from_directory(self, num_classes, power, sr, separation, target_size=(224, 224, 3),
+
+    def flow_from_directory(self, num_classes, power, sr, separation, overlap, target_size=(224, 224, 3),
                             batch_size=32, shuffle=False,
                             seed=None, follow_links=False):
-        return DirectoryIterator(num_classes, power, sr, separation, self, target_size=target_size,
+        return DirectoryIterator(num_classes, power, sr, separation, overlap, self, target_size=target_size,
                                  batch_size=batch_size, shuffle=shuffle, seed=seed,
                                  follow_links=follow_links)
 
@@ -42,7 +42,7 @@ class DirectoryIterator(Iterator):
        follow_links: Bool, whether to follow symbolic links or not
 
     """
-    def __init__(self, num_classes, power, sr, separation, image_data_generator,
+    def __init__(self, num_classes, power, sr, separation, overlap, image_data_generator,
                  target_size=(224, 224, 3), batch_size=32, shuffle=False, seed=None,
                  follow_links=False):
         
@@ -54,20 +54,18 @@ class DirectoryIterator(Iterator):
         self.samples = 0
         self.sr = sr
         self.separation = separation
+        self.overlap = overlap
 
         # File of database for the phase
         dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
-        if num_classes == 2:
-            labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
-        else:  # if num_classes == 3:
-            labels_file = os.path.join(FLAGS.demo_path, 'labels3.txt')
+        labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
         moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
     
-        self.filenames, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
-        self.segments = separate_audio(self.moments, self.filenames, self.sr, self.separation)
-        self.samples = len(self.filenames) 
+        self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
+        self.segments = separate_audio(self.file_names, self.sr, self.separation, self.overlap)
+        self.samples = len(self.segments)
         
-        # Check if dataset is empty
+        # Check if data set is empty
         if self.samples == 0:
             raise IOError("Did not find any data")
         
@@ -103,7 +101,7 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = compute_melgram(self, j)
+            x = compute_mel_gram(self, j)
             if silence_detection(x):
                 self.silence_labels[j] = 'S'
             else:
@@ -130,22 +128,28 @@ def cross_val_load(dirs_file, moments_file, labels_file):
     return dirs_list, moments_list, np.array(labels_list, dtype=k.floatx())
 
 
-def separate_audio(moments, files, sr, separation):
+def separate_audio(files, sr, separation, overlap):
     segments = []
     audio, sr_old = librosa.load(files[0].split('\n')[0])
     audio = librosa.resample(audio, sr_old, sr)
-    for i in moments:
-        segments.append(audio[int(i)*sr:(int(i)+separation)*sr])
+    if not(overlap == 0):
+        i = 0
+        while i*overlap+separation < librosa.get_duration(audio):
+            segments.append(audio[i*overlap*sr:(i*overlap + separation) * sr])
+            i = i + 1
+    else:
+        for i in range(int(librosa.get_duration(audio)//separation)):
+            segments.append(audio[i*separation*sr:(i+1)*separation*sr])
     return segments
 
 
-def compute_melgram(self, j):
+def compute_mel_gram(self, j):
     # Compute a mel-spectrogram and returns it in a shape of (96,), where
     # 96 == #mel-bins and 1366 == #time frame
 
     # mel-spectrogram parameters
     n_fft = 512
-    n_mels = 96
+    n_mel = 96
     hop_len = 256
     n_sample = self.segments[j].shape[0]
     n_sample_fit = int(self.separation*self.sr)
@@ -158,7 +162,7 @@ def compute_melgram(self, j):
         src = self.segments[j]
     mel = librosa.feature.melspectrogram(
             y=src, sr=self.sr, hop_length=hop_len,
-            n_fft=n_fft, n_mels=n_mels, power=self.power)
+            n_fft=n_fft, n_mels=n_mel, power=self.power)
 
     ret = librosa.power_to_db(mel)
     return ret

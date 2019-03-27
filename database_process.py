@@ -14,7 +14,6 @@ import numpy as np
 import librosa
 from scipy.io import wavfile
 from matplotlib import image
-from common_flags import FLAGS
 # ♥
 
 
@@ -77,10 +76,10 @@ def create_database(root_data_path, separated, separation):
                 audio_file = os.path.join(root_data_path, str(csv_file.split('.')[0])+'.wav')
                 csv_file = os.path.join(root_data_path, 'meta', csv_file)
                 
-                with open(csv_file, newline='') as csvfile:
+                with open(csv_file, newline='') as csv_data:
                     info = []
-                    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-                    for row in spamreader:
+                    spam_reader = csv.reader(csv_data, delimiter=' ', quotechar='|')
+                    for row in spam_reader:
                         info.append(row)
                         if row[0].split(',')[2] == 'm':
                             start = int(round(float(row[0].split(',')[0])))
@@ -142,10 +141,11 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
 
 def labels_demo(data_path, file, num_classes):
     labels_old = utils.file_to_list(os.path.join(data_path, file), False)
-    if num_classes == 3:
-        dct = {'1\n': '2'}
-    else:
-        dct = {'1\n': '3'}
+    dct = {'1\n': '0', '0\n': '3'}
+    # if num_classes == 3:
+    #     dct = {'1\n': '2'}
+    # else:
+    #     dct = {'1\n': '3'}
     labels = list(map(dct.get, labels_old))
     utils.list_to_file(labels, os.path.join(data_path, 'labels'+str(num_classes)+'.txt'))
     return
@@ -183,7 +183,7 @@ def extract_spec_grams(data_path, save_path):
                 for i in range(0, int(librosa.get_duration(audio)), separation):
                     segment = audio[i*sr:(i+separation)*sr]
                     mel = compute_mel_gram(segment, sr, power, separation)
-                    image.imsave(os.path.join(save_path, classes, 'mel_'+f'{j:11}'+'.png'), mel)
+                    np.save(os.path.join(save_path, classes, 'mel_'+str(j)+'.npy'), mel)
                     j = j+1
 
 
@@ -192,9 +192,20 @@ def data_files(data_path):
     labels = []
     for classes in os.listdir(data_path):
         class_path = os.path.join(data_path, classes)
-        file_names.append(x for x in os.listdir(class_path))
-        labels.append([classes]*len(os.listdir(class_path)))
+        for files in os.listdir(class_path):
+            file_names.append(os.path.join(class_path, files))
+            labels.append(classes)
 
     utils.list_to_file(file_names, os.path.join(data_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(data_path, 'labels.txt'))
+    return
+
+
+def data_rename(data_path):
+    for classes in os.listdir(data_path):
+        i = 0
+        class_path = os.path.join(data_path, classes)
+        for files in os.listdir(class_path):
+            os.rename(os.path.abspath(files), os.path.join(class_path, 'mel_'+f'{i:6}'+'.png'))
+            i = i + 1
     return

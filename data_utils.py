@@ -8,12 +8,13 @@ from keras.preprocessing.image import ImageDataGenerator
 from common_flags import FLAGS
 from random import shuffle as sh
 import utils
+import matplotlib.image as mpimg
 import cv2
 
 
 class DataGenerator(ImageDataGenerator):
     """
-    Generate minibatches of images and labels with real-time augmentation.
+    Generate mini-batches of images and labels with real-time augmentation.
     The only function that changes w.r.t. parent class is the flow that
     generates data. This function needed in fact adaptation for different
     directory structure and labels. All the remaining functions remain
@@ -24,7 +25,7 @@ class DataGenerator(ImageDataGenerator):
                             classes=None, class_mode='categorical', batch_size=32, shuffle=True,
                             seed=None, save_to_dir=False, save_prefix='', save_format='png',
                             follow_links=False, subset=None, interpolation='nearest'):
-        return DirectoryIterator(self, directory, target_size=target_size,
+        return DirectoryIterator(directory, self, target_size=target_size,
                                  batch_size=batch_size, shuffle=shuffle, seed=seed, follow_links=follow_links)
 
 
@@ -43,7 +44,7 @@ class DirectoryIterator(Iterator):
        follow_links: Bool, whether to follow symbolic links or not
     """
     def __init__(self, directory, image_data_generator,
-                 target_size=(224, 224),
+                 target_size=(100, 100),
                  batch_size=32, shuffle=True, seed=None, follow_links=False):
         
         self.image_data_generator = image_data_generator
@@ -61,10 +62,10 @@ class DirectoryIterator(Iterator):
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
         
-        self.filenames, self.ground_truth = cross_val_load(dirs_file, labels_file)
+        self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
         
         # Number of samples in data
-        self.samples = len(self.filenames)
+        self.samples = len(self.file_names)
         self.num_classes = len(set(self.ground_truth))
         # Check if data is empty
         if self.samples == 0:
@@ -99,7 +100,7 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = load_img(self.filenames[j])
+            x = np.load(self.file_names[j])
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -144,10 +145,6 @@ def cross_val_create(path):
 def cross_val_load(dirs_file, labels_file):
     dirs_list = utils.file_to_list(dirs_file, True)
     labels_list = utils.file_to_list(labels_file, True)
-    labels_list = [int(i.split('\n')[0]) for i in labels_list]
+    dct = {'music\n': '0', 'music_speech\n': '1', 'speech\n': '2', 'noise\n': '3'}
+    labels_list = [int(i) for i in list(map(dct.get, labels_list))]
     return dirs_list, np.array(labels_list, dtype=k.floatx())
-
-
-def load_img(path):
-    img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
-    return np.asarray(img, dtype=np.float32)

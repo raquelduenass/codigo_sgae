@@ -6,6 +6,7 @@ from keras.regularizers import l2
 from keras.models import Model
 from common_flags import FLAGS
 
+
 def lr_schedule(epoch):
     """Learning Rate Schedule
     Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
@@ -26,6 +27,7 @@ def lr_schedule(epoch):
         lr *= 1e-1
     print('Learning rate: ', lr)
     return lr
+
 
 def resnet_layer(inputs,
                  num_filters=16,

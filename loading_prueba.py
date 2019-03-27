@@ -5,6 +5,7 @@ Created on Tue Mar 12 09:41:55 2019
 """
 
 import database_process
-music_path = '../data_sgae/mixed'
-spec_path = '../data_sgae/spectrograms'
-database_process.data_files(spec_path)
+music_path = 'C:/Users/rds/Documents/GitHub/data_sgae/mixed'
+spec_path = 'C:/Users/rds/Documents/GitHub/data_sgae/spectrograms_npy'
+
+database_process.extract_spec_grams(music_path, spec_path)

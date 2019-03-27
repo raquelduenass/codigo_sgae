@@ -1,6 +1,7 @@
 import logz
 import keras
 
+
 class MyCallback(keras.callbacks.Callback):
     """
     Customized callback class.
@@ -13,7 +14,6 @@ class MyCallback(keras.callbacks.Callback):
     
     def __init__(self, filepath):
         self.filepath = filepath
-
 
     def on_epoch_end(self, epoch, logs={}): 
         # Save training and validation losses
