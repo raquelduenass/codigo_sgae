@@ -58,10 +58,8 @@ class DirectoryIterator(Iterator):
 
         # File of database for the phase
         dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
-        labels_file = os.path.join(FLAGS.demo_path, 'labels.txt')
-        moments_file = os.path.join(FLAGS.demo_path, 'moments.txt')
-    
-        self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
+
+        self.file_names = utils.file_to_list(dirs_file, False)
         self.segments = separate_audio(self.file_names, self.sr, self.separation, self.overlap)
         self.samples = len(self.segments)
         
@@ -97,7 +95,6 @@ class DirectoryIterator(Iterator):
                     
         # Initialize batches and indexes
         batch_x = []
-        indexes = []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
@@ -108,24 +105,12 @@ class DirectoryIterator(Iterator):
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
                 x = self.image_data_generator.standardize(x)
-                batch_x.append(np.resize(x, (100, 100)))
-                indexes.append(j)
+                batch_x.append(x)  # np.resize(x, (100, 100)))
 
         # Build batch of labels
-        batch_y = np.array(self.ground_truth[indexes], dtype=k.floatx())
-        batch_y = keras.utils.to_categorical(batch_y, num_classes=self.num_classes)
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
     
-        return batch_x, batch_y
-
-
-def cross_val_load(dirs_file, moments_file, labels_file):
-    dirs_list = utils.file_to_list(dirs_file, False)
-    labels_list = utils.file_to_list(labels_file, False)
-    labels_list = [int(i.split('\n')[0]) for i in labels_list]
-    moments_list = utils.file_to_list(moments_file, False)
-        
-    return dirs_list, moments_list, np.array(labels_list, dtype=k.floatx())
+        return batch_x
 
 
 def separate_audio(files, sr, separation, overlap):
@@ -144,7 +129,7 @@ def separate_audio(files, sr, separation, overlap):
 
 
 def compute_mel_gram(self, j):
-    # Compute a mel-spectrogram and returns it in a shape of (96,), where
+    # Compute a mel-spectrogram and returns it in a shape of (96,173), where
     # 96 == #mel-bins and 1366 == #time frame
 
     # mel-spectrogram parameters

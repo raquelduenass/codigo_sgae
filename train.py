@@ -150,7 +150,6 @@ def _main():
     num_classes = 4
     flag_data = 0
     separation = 2
-    # overlap = 0
     music_pct = 0.8
     n = 1
     version = 2  # 1 o 2
@@ -219,7 +218,7 @@ def _main():
 
     # Serialize model into json
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
-    utils.modelToJson(model, json_model_path)
+    utils.model_to_json(model, json_model_path)
 
     # Train model
     train_model(train_generator, val_generator, model, initial_epoch)

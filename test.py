@@ -57,38 +57,35 @@ def evaluate_classification(pred_probs, pred_labels, real_labels):
     highest_errors = compute_highest_classification_errors(pred_probs, real_labels, n_errors=20)
     
     # Return accuracy and highest errors in a dictionary
-    dictionary = {"ave_accuracy": ave_accuracy.tolist(),
+    dictionary = {"ave_accuracy": ave_accuracy,
                   "highest_errors": highest_errors.tolist()}
     return dictionary
 
 
 def _main():
 
-    # Set testing mode (dropout/batchnormalization)
+    # Set testing mode (dropout/batch normalization)
     k.set_learning_phase(TEST_PHASE)
-    
-    # Output dimension (2 classes)
-    num_classes = 4
 
     # Generate testing data
-    test_datagen = data_utils.DataGenerator(rescale=1./255)
+    test_data_gen = data_utils.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
-    test_generator = test_datagen.flow_from_directory('test',
-                                                      shuffle=False,
-                                                      target_size=(FLAGS.img_height, FLAGS.img_width),
-                                                      batch_size=FLAGS.batch_size)
+    test_generator = test_data_gen.flow_from_directory('test',
+                                                       shuffle=False,
+                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
+                                                       batch_size=FLAGS.batch_size)
     
     # Load json and create model
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
-    model = utils.jsonToModel(json_model_path)
+    model = utils.json_to_model(json_model_path)
 
     # Load weights
     weights_load_path = os.path.abspath('./models/test_4/weights_019.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
-    except:
+    except ImportError:
         print("Impossible to find weight path. Returning untrained model")
 
     # Compile model
@@ -102,14 +99,14 @@ def _main():
     
     # Predicted probabilities
     pred_probs = np.max(probs_per_class, axis=-1)
-    # Prediced labels
+    # Predicted labels
     pred_labels = np.argmax(probs_per_class, axis=-1)
     # Real labels (ground truth)
     real_labels = np.argmax(ground_truth, axis=-1)
     
     # Evaluate predictions: Average accuracy and highest errors
     print("-----------------------------------------------")
-    print("Evalutaion:")
+    print("Evaluation:")
     evaluation = evaluate_classification(pred_probs, pred_labels, real_labels)
     print("-----------------------------------------------")
     

@@ -4,7 +4,6 @@ import os
 import sys
 import utils
 import demo_utils
-from sklearn import metrics
 from keras import backend as k
 from common_flags import FLAGS
 
@@ -43,7 +42,7 @@ def _main():
 
     # Load json and create model
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
-    model = utils.jsonToModel(json_model_path)
+    model = utils.json_to_model(json_model_path)
 
     # Load weights
     weights_load_path = os.path.abspath('./models/test_4/weights_011.h5')
@@ -59,35 +58,16 @@ def _main():
     # Get predictions and ground truth
     n_samples = test_generator.samples
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
-    probs_per_class, ground_truth = utils.compute_predictions_and_gt(
+    probs_per_class = utils.compute_predictions(
             model, test_generator, nb_batches, verbose=1)
     
     # Predicted labels
     silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(probs_per_class, axis=-1)]
     pred_labels = utils.join_labels(classes, silence_labels)
-    real_labels = [CLASSES[i] for i in np.argmax(ground_truth, axis=-1)]
-    
-    # Standardize real labels
-    for i in range(len(real_labels)):
-        if not (real_labels[i] == 'M'):
-            real_labels[i] = 'NM'
-            
-    # Save predicted and real steerings as a dictionary
-    labels_dict = {'pred_labels': pred_labels, 'real_labels': real_labels}
-    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
-                                                  'demo_predicted_and_real_labels.json'))
-            
-    # Accuracy before softening
-    ave_accuracy = metrics.accuracy_score(real_labels, pred_labels)
-    print('Initial accuracy: ', ave_accuracy)
     
     # Class softening
     soft_labels = utils.soft_max(pred_labels, wind_len)
-    
-    # Accuracy after softening
-    ave_accuracy = metrics.accuracy_score(real_labels, soft_labels)
-    print('Softening accuracy: ', ave_accuracy)
     
     # Detection of beginning of music
     music_pos, music_dur = utils.counting(soft_labels, 'M')
@@ -101,11 +81,6 @@ def _main():
             print('Beginning: ', (music_pos[i]*overlap*separation)//60, 'min ',
                   int((music_pos[i]*overlap*separation) % 60),
                   'seg - Duration: ', music_dur[i]*separation)
-    
-    # ARREGLAR#################################################################
-    ############################################################################
-    utils.plot_confusion_matrix('outer_test', FLAGS.experiment_rootdir, real_labels,
-                                soft_labels, CLASSES, normalize=True)
 
 
 def main(argv):

@@ -173,7 +173,7 @@ def compute_predictions(model, generator, steps, verbose=0):
         return np.squeeze(np.array([np.concatenate(out) for out in all_outs]))
                 
 
-def modelToJson(model, json_model_path):
+def model_to_json(model, json_model_path):
     """
     Serialize model into json.
     """
@@ -183,7 +183,7 @@ def modelToJson(model, json_model_path):
         f.write(model_json)
 
 
-def jsonToModel(json_model_path):
+def json_to_model(json_model_path):
     """
     Serialize json into model.
     """

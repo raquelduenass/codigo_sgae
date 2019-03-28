@@ -21,7 +21,7 @@ class DataGenerator(ImageDataGenerator):
     unchanged.
     """
 
-    def flow_from_directory(self, directory, target_size=(224, 224), color_mode='rgb',
+    def flow_from_directory(self, directory, target_size=(96, 173), color_mode='rgb',
                             classes=None, class_mode='categorical', batch_size=32, shuffle=True,
                             seed=None, save_to_dir=False, save_prefix='', save_format='png',
                             follow_links=False, subset=None, interpolation='nearest'):
@@ -44,7 +44,7 @@ class DirectoryIterator(Iterator):
        follow_links: Bool, whether to follow symbolic links or not
     """
     def __init__(self, directory, image_data_generator,
-                 target_size=(100, 100),
+                 target_size=(96, 173),
                  batch_size=32, shuffle=True, seed=None, follow_links=False):
         
         self.image_data_generator = image_data_generator
@@ -100,11 +100,11 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = np.load(self.file_names[j])
+            x = np.load(self.file_names[j].split('\n')[0])
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
-            batch_x.append(np.resize(x, (100, 100)))
+            batch_x.append(x)  # np.resize(x, (100, 100)))
             indexes.append(j)
 
         # Build batch of labels
