@@ -1,8 +1,6 @@
 import os
 import numpy as np
 
-import keras
-from keras import backend as k
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
 from common_flags import FLAGS
@@ -120,7 +118,7 @@ def separate_audio(files, sr, separation, overlap):
     if not(overlap == 0):
         i = 0
         while i*overlap+separation < librosa.get_duration(audio):
-            segments.append(audio[i*overlap*sr:(i*overlap + separation) * sr])
+            segments.append(audio[int(i*overlap*sr):int((i*overlap+separation)*sr)])
             i = i + 1
     else:
         for i in range(int(librosa.get_duration(audio)//separation)):

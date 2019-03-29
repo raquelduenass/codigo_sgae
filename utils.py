@@ -158,7 +158,8 @@ def compute_predictions(model, generator, steps, verbose=0):
         if not all_outs:
             # Len of this list is related to the number of
             # outputs per model(1 in our case)
-            all_outs = []*len(outs)
+            for out in outs:
+                all_outs.append([])
 
         for i, out in enumerate(outs):
             all_outs[i].append(out)
@@ -307,13 +308,24 @@ def join_labels(pred, silence):
     return silence
 
 
-def soft_max(pred, wind_len):
-    soft = []
+def soft_max(pred, wind_len, param):
+    join = []
     for i in range(len(pred)):
+        if i < param:
+            join.append(pred[i])
+        else:
+            move = i % param
+            if i-move+param <= len(join)-1:
+                join.append(Counter(pred[int(i-move):int(i-move+param)]).most_common(1)[0][0])
+            else:
+                join.append(pred[i])
+
+    soft = []
+    for i in range(len(join)):
         if i < wind_len//2:
-            soft.append(Counter(pred[0:i+wind_len//2]).most_common(1)[0][0])
-        elif i > len(pred)-1-wind_len//2:
-            soft.append(Counter(pred[i-wind_len//2:len(pred)-1]).most_common(1)[0][0])
+            soft.append(Counter(join[0:i+wind_len//2]).most_common(1)[0][0])
+        elif i > len(join)-1-wind_len//2:
+            soft.append(Counter(join[i-wind_len//2:len(join)-1]).most_common(1)[0][0])
         else:
             soft.append(Counter(pred[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
     return soft
