@@ -10,12 +10,10 @@ from common_flags import FLAGS
 
 # ♦ Constants
 TEST_PHASE = 1
-power = 1
+power = 2
 sr = 22050
 separation = 2
-# CLASSES = ['HM','M','H']
-CLASSES = ['M', 'HM', 'N', 'H']
-# CLASSES = ['M','HM','N','H' 'HN']
+CLASSES = ['M', 'MH', 'H', 'R']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -81,7 +79,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_4/weights_019.h5')
+    weights_load_path = os.path.abspath('./models/test_5/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))

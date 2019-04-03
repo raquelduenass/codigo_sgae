@@ -201,16 +201,13 @@ def list_to_file(data, f_name):
             f.write("%s\n" % item)
 
 
-def file_to_list(f_name, skip):
+def file_to_list(f_name):
+    ret_data = []
     with open(f_name, 'r') as f:
         data = f.readlines()
-    if skip:
-        data_s = []
-        for i in range(int(len(data)/2)):
-            data_s.append(data[2*i])
-        return data_s
-    else:
-        return data
+    for item in data:
+        ret_data.append(item.split('\n')[0])
+    return ret_data
     
 
 def write_to_file(dictionary, f_name):
@@ -233,7 +230,7 @@ def plot_loss(path_to_log):
     log_file = os.path.join(path_to_log, "log.txt")
     try:
         log = np.genfromtxt(log_file, delimiter='\t', dtype=None, names=True)
-    except:
+    except ImportError:
         raise IOError("Log file not found")
 
     train_loss = log['train_loss']
@@ -308,24 +305,38 @@ def join_labels(pred, silence):
     return silence
 
 
-def soft_max(pred, wind_len, param):
-    join = []
-    for i in range(len(pred)):
-        if i < param:
-            join.append(pred[i])
+def separate_labels(pred, lengths):
+    labels = [[]]*len(lengths)
+    for i in range(len(lengths)):
+        if i == 0:
+            labels[i] = pred[0:lengths[i]]
         else:
-            move = i % param
-            if i-move+param <= len(join)-1:
-                join.append(Counter(pred[int(i-move):int(i-move+param)]).most_common(1)[0][0])
-            else:
-                join.append(pred[i])
+            labels[i] = pred[lengths[i-1]+1:lengths[i]]
+    return labels
 
-    soft = []
-    for i in range(len(join)):
-        if i < wind_len//2:
-            soft.append(Counter(join[0:i+wind_len//2]).most_common(1)[0][0])
-        elif i > len(join)-1-wind_len//2:
-            soft.append(Counter(join[i-wind_len//2:len(join)-1]).most_common(1)[0][0])
+
+# TODO: Introducir probabilidades de CNN
+def soft_max(pred, wind_len, param, files):
+    ret_soft = [[]]*files
+
+    for j in range(files):
+        if not(param == 0):
+            join = []
+            for i in range(len(pred[j])):
+                if i < param:
+                    join.append(pred[j][i])
+                else:
+                    join.append(Counter(pred[j][int(i-param):int(i)]).most_common(1)[0][0])
         else:
-            soft.append(Counter(pred[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
-    return soft
+            join = pred[j]
+
+        soft = []
+        for i in range(len(join)):
+            if i < wind_len//2:
+                soft.append(Counter(join[0:i+wind_len//2]).most_common(1)[0][0])
+            elif i > len(join)-1-wind_len//2:
+                soft.append(Counter(join[i-wind_len//2:len(join)-1]).most_common(1)[0][0])
+            else:
+                soft.append(Counter(join[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
+        ret_soft[j] = soft
+    return ret_soft

@@ -6,10 +6,11 @@ import utils
 import demo_utils
 from keras import backend as k
 from common_flags import FLAGS
+from sklearn import metrics
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M', 'MH', 'N', 'H']
+CLASSES = ['M', 'MH', 'H', 'R']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -64,28 +65,43 @@ def _main():
     silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(prob_per_class, axis=-1)]
     predicted_labels = utils.join_labels(classes, silence_labels)
+    predicted_labels = utils.separate_labels(predicted_labels, test_generator.files_length)
+    real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
+    real_labels = [CLASSES[i] for i in real]
+    real_labels = utils.separate_labels(real_labels, test_generator.files_length)
     
     # Class softening
-    soft_labels = utils.soft_max(predicted_labels, wind_len, separation/overlap)
+    soft_labels = utils.soft_max(predicted_labels, wind_len, separation/overlap,
+                                 len(test_generator.files_length))
 
     # Save predicted and softened labels as a dictionary
-    labels_dict = {'predicted_labels': predicted_labels.tolist(),
-                   'soft_labels': soft_labels.tolist()}
+    labels_dict = {'predicted_labels': predicted_labels,
+                   'soft_labels': soft_labels}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
-                                                  'demo_predicted_and_real_labels.json'))
+                                                  'demo_predicted_and_soft_labels.json'))
+
+    # TODO: Establecer métricas temporales
+    # Accuracy before softening
+    ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
+    print('Average accuracy before softening= ', ave_accuracy)
+
+    # Accuracy after softening
+    ave_accuracy = metrics.accuracy_score(real_labels, soft_labels)
+    print('Average accuracy after softening= ', ave_accuracy)
     
     # Detection of beginning of music
-    music_pos, music_dur = utils.counting(soft_labels, 'M')
-    print('Music detected in:')
-    for i in range(len(music_pos)):
-        if overlap == 0:
-            print('Beginning: ', (music_pos[i] * separation) // 60, 'min ',
-                  int((music_pos[i] * separation) % 60),
-                  'seg - Duration: ', music_dur[i] * separation)
-        else:
-            print('Beginning: ', int((music_pos[i]*overlap)//60), 'min ',
-                  int((music_pos[i]*overlap) % 60),
-                  'seg - Duration: ', music_dur[i]*overlap)
+    for j in range(len(test_generator.files_length)):
+        music_pos, music_dur = utils.counting(soft_labels[j], 'M')
+        print('Music detected in:')
+        for i in range(len(music_pos)):
+            if overlap == 0:
+                print('Beginning: ', (music_pos[i] * separation) // 60, 'min ',
+                      int((music_pos[i] * separation) % 60),
+                      'seg - Duration: ', music_dur[i] * separation)
+            else:
+                print('Beginning: ', int((music_pos[i]*overlap)//60), 'min ',
+                      int((music_pos[i]*overlap) % 60),
+                      'seg - Duration: ', music_dur[i]*overlap)
 
 
 def main(argv):

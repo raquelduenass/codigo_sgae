@@ -5,11 +5,9 @@ import keras
 from keras import backend as k
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
-from common_flags import FLAGS
 from random import shuffle as sh
 import utils
-import matplotlib.image as mpimg
-import cv2
+from common_flags import FLAGS
 
 
 class DataGenerator(ImageDataGenerator):
@@ -100,11 +98,11 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = np.load(self.file_names[j].split('\n')[0])
+            x = np.load(self.file_names[j])
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
-            batch_x.append(x)  # np.resize(x, (100, 100)))
+            batch_x.append(x)
             indexes.append(j)
 
         # Build batch of labels
@@ -145,6 +143,5 @@ def cross_val_create(path):
 def cross_val_load(dirs_file, labels_file):
     dirs_list = utils.file_to_list(dirs_file, True)
     labels_list = utils.file_to_list(labels_file, True)
-    dct = {'music\n': '0', 'music_speech\n': '1', 'speech\n': '2', 'noise\n': '3'}
-    labels_list = [int(i) for i in list(map(dct.get, labels_list))]
+    labels_list = [int(i) for i in labels_list]
     return dirs_list, np.array(labels_list, dtype=k.floatx())

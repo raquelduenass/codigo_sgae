@@ -58,15 +58,27 @@ class DirectoryIterator(Iterator):
         dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
 
         self.file_names = utils.file_to_list(dirs_file, False)
-        self.segments = separate_audio(self.file_names, self.sr, self.separation, self.overlap)
-        self.samples = len(self.segments)
+        self.files_length = [[]]*len(self.file_names)
+
+        # Calculate number of samples
+        for i in range(len(self.file_names)):
+            audio, sr_old = librosa.load(self.file_names[i])
+            audio = librosa.resample(audio, sr_old, self.sr)
+            if i == 0:
+                self.files_length[i] = int((librosa.get_duration(audio) -
+                                            self.separation) // self.overlap)
+            else:
+                self.files_length[i] = int(self.files_length[i-1]) +\
+                                       int((librosa.get_duration(audio)-
+                                            self.separation) // self.overlap)
+        self.samples = self.files_length[-1]
         
         # Check if data set is empty
-        if self.samples == 0:
+        if len(self.file_names) == 0:
             raise IOError("Did not find any data")
         
         # Silence labels
-        self.silence_labels = ['']*self.samples
+        self.silence_labels = []*self.samples
 
         print('Found {} images belonging to {} classes.'.format(
                 self.samples, self.num_classes))
@@ -90,20 +102,24 @@ class DirectoryIterator(Iterator):
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-                    
+
+        # Extract segments of all the files
+        segments, order = separate_many_audio(self, index_array)
+
         # Initialize batches and indexes
         batch_x = []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = compute_mel_gram(self, j)
+            x = compute_mel_gram(self, segments, j)
             if silence_detection(x):
                 self.silence_labels[j] = 'S'
             else:
+                self.silence_labels[j] = ''
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
                 x = self.image_data_generator.standardize(x)
-                batch_x.append(x)  # np.resize(x, (100, 100)))
+                batch_x.append(x)
 
         # Build batch of labels
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
@@ -111,38 +127,59 @@ class DirectoryIterator(Iterator):
         return batch_x
 
 
-def separate_audio(files, sr, separation, overlap):
+def separate_many_audio(self, index_array):
     segments = []
-    audio, sr_old = librosa.load(files[0].split('\n')[0])
-    audio = librosa.resample(audio, sr_old, sr)
-    if not(overlap == 0):
-        i = 0
-        while i*overlap+separation < librosa.get_duration(audio):
-            segments.append(audio[int(i*overlap*sr):int((i*overlap+separation)*sr)])
-            i = i + 1
+
+    if index_array[0] <= self.files_length[-1]:
+        start_file = len(self.files_length)-1
     else:
-        for i in range(int(librosa.get_duration(audio)//separation)):
-            segments.append(audio[i*separation*sr:(i+1)*separation*sr])
-    return segments
+        start_file = len(self.files_length)
+    files = [start_file] * self.batch_size
+    if index_array[-1] <= self.files_length[-1]:
+        end_file = len(self.files_length)-1
+    else:
+        end_file = len(self.files_length)
+    if not(start_file == end_file):
+        files[-(index_array[-1]-self.files_length[-1]):] =\
+            [end_file]*(index_array[-1]-self.files_length[-1])
+
+    actual_file = start_file
+    audio, sr_old = librosa.load(self.file_names[actual_file])
+    audio = librosa.resample(audio, sr_old, self.sr)
+
+    for j in range(self.batch_size):
+        if files[j] == actual_file:
+            if not (self.overlap == 0):
+                for i in range(index_array[0], index_array[-1]):
+                    if i * self.overlap + self.separation < librosa.get_duration(audio):
+                        segments.append(audio[int(i * self.overlap * self.sr):
+                                              int((i * self.overlap + self.separation) * self.sr)])
+            else:
+                for i in range(index_array[0], index_array[-1]):
+                    segments.append(audio[i * self.separation * self.sr:
+                                          (i + 1) * self.separation * self.sr])
+        else:
+            actual_file = files[j]
+            audio, sr_old = librosa.load(self.file_names[actual_file])
+            audio = librosa.resample(audio, sr_old, self.sr)
+
+    return segments, files
 
 
-def compute_mel_gram(self, j):
-    # Compute a mel-spectrogram and returns it in a shape of (96,173), where
-    # 96 == #mel-bins and 1366 == #time frame
+def compute_mel_gram(self, segments, j):
 
-    # mel-spectrogram parameters
     n_fft = 512
     n_mel = 96
     hop_len = 256
-    n_sample = self.segments[j].shape[0]
+    n_sample = segments[j].shape[0]
     n_sample_fit = int(self.separation*self.sr)
 
     if n_sample < n_sample_fit:  # if too short
-        src = np.concatenate([self.segments[j], np.zeros((int(self.separation*self.sr) - n_sample,))])
+        src = np.concatenate([segments[j], np.zeros((int(self.separation*self.sr) - n_sample,))])
     elif n_sample > n_sample_fit:  # if too long
-        src = self.segments[j][int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
+        src = segments[j][int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
     else:
-        src = self.segments[j]
+        src = segments[j]
     mel = librosa.feature.melspectrogram(
             y=src, sr=self.sr, hop_length=hop_len,
             n_fft=n_fft, n_mels=n_mel, power=self.power)
