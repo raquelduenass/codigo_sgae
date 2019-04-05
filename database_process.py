@@ -39,13 +39,14 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label, sepa
 
 # TODO: CORREGIR VARIOS AUDIOS
 def data_and_labels_mu_speak(label, music_file, pre_label,
-                             moments_list, start_list, end_list,
+                             start_list, end_list,
                              separation, overlap):
+    moments_list = []
     audio = AudioSegment.from_file(music_file, format="mp3")
     if not(overlap == 0):
         param = separation / overlap
         start_list[:] = [int(x/overlap) for x in start_list]
-        end_list[:] = [int(x/overlap) for x in end_list]
+        end_list[:] = [int(((x/overlap)//param)*param) for x in end_list]
         labels = np.ones((int((int(audio.duration_seconds / overlap)//param)*param),))
         for i in range(int(audio.duration_seconds*param)):
             moments_list.append(i * overlap)
@@ -61,6 +62,7 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
         for i in range(len(start_list)):
             labels[start_list[i]:end_list[i]] = 0
         label_list = list(labels)
+        return label_list, moments_list
 
     else:
         for i in range(len(start_list)):
@@ -70,8 +72,7 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
                 else:
                     pre_label[j] = 2
         label_list = list(pre_label)
-
-    return label_list, moments_list
+        return label_list
 
 
 # TODO: CORREGIR VARIOS AUDIOS
@@ -88,9 +89,10 @@ def create_database(root_data_path, separated, separation, overlap):
         label_list = list(map(dct.get, label_list))
 
     else:
-        start_music, end_music, start_speech, end_speech = [], [], [], []
-        
         for csv_file in os.listdir(os.path.join(root_data_path, 'meta')):
+
+            start_music, end_music, start_speech, end_speech = [], [], [], []
+
             if csv_file.endswith('.csv'):
                 audio_file = os.path.join(root_data_path, str(csv_file.split('.')[0])+'.wav')
                 csv_file = os.path.join(root_data_path, 'meta', csv_file)
@@ -110,12 +112,14 @@ def create_database(root_data_path, separated, separation, overlap):
                             start_speech.append(start)
                             end_speech.append(start + int(round(float(row[0].split(',')[1]))))
                 
-                label_list, moments_list = data_and_labels_mu_speak(
-                    'M', audio_file, label_list, moments_list,
+                label_list_m, moments_list_m = data_and_labels_mu_speak(
+                    'M', audio_file, label_list,
                     start_music, end_music, separation, overlap)
-                label_list, moments_list = data_and_labels_mu_speak(
-                    'H', audio_file, label_list, moments_list,
+                label_list_h = data_and_labels_mu_speak(
+                    'H', audio_file, label_list_m,
                     start_speech, end_speech, separation, overlap)
+                label_list.append(label_list_h)
+                moments_list.append(moments_list_m)
     
     # Save audios, labels and moments in file
     utils.list_to_file(data_list, os.path.join(root_data_path, 'data.txt'))
