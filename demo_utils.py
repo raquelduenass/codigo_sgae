@@ -132,37 +132,35 @@ def separate_many_audio(self, index_array):
 
     for j in range(-len(self.files_length)+1, 1):
         if index_array[0] < self.files_length[-j]:
-            start_file = -j
-        if index_array[-1] < self.files_length[-j]:
-            end_file = -j
+            actual_file = -j
 
-    files = [start_file] * self.batch_size
-    if not(start_file == end_file):
-        files[-(index_array[-1]-self.files_length[start_file]):] =\
-            [end_file]*(index_array[-1]-self.files_length[start_file])
-
-    actual_file = start_file
+    if actual_file == 0:
+        offset = index_array[0] * self.overlap
+    else:
+        offset = (index_array[0]-self.files_length[actual_file])*self.overlap
+    duration = (self.batch_size-1)*self.overlap+self.separation
     audio, sr_old = librosa.load(self.file_names[actual_file],
-                                 offset=(index_array[0]-self.files_length[start_file])*self.overlap,
-                                 duration=self.batch_size*self.overlap+self.separation)
+                                 offset=offset,
+                                 duration=duration)
     audio = librosa.resample(audio, sr_old, self.sr)
-
+    real_duration = librosa.get_duration(audio)
+    minus = 0
     for j in range(self.batch_size):
-        if files[j] == actual_file:
-            if not (self.overlap == 0):
-                for i in range(index_array[0], index_array[-1]):
-                    if i * self.overlap + self.separation <= librosa.get_duration(audio):
-                        segments.append(audio[int(i * self.overlap * self.sr):
-                                              int((i * self.overlap + self.separation) * self.sr)])
+        if not (self.overlap == 0):
+            if (j-minus) * self.overlap + self.separation <= real_duration:
+                segments.append(audio[int((j-minus) * self.overlap * self.sr):
+                                      int(((j-minus) * self.overlap + self.separation) * self.sr)])
             else:
-                for i in range(index_array[0], index_array[-1]):
-                    segments.append(audio[i * self.separation * self.sr:
-                                          (i + 1) * self.separation * self.sr])
+                minus = j
+                actual_file = actual_file + 1
+                audio, sr_old = librosa.load(self.file_names[actual_file],
+                                             duration=(self.batch_size - j) * self.overlap + self.separation)
+                audio = librosa.resample(audio, sr_old, self.sr)
+                real_duration = librosa.get_duration(audio)
+                segments.append(audio[0:int(self.separation * self.sr)])
         else:
-            actual_file = files[j]
-            audio, sr_old = librosa.load(self.file_names[actual_file],
-                                         duration=(self.batch_size-j)*self.overlap+self.separation)
-            audio = librosa.resample(audio, sr_old, self.sr)
+            segments.append(audio[j * self.separation * self.sr:
+                                  (j + 1) * self.separation * self.sr])
 
     return segments
 

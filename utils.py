@@ -340,3 +340,33 @@ def soft_max(pred, wind_len, param, files):
                 soft.append(Counter(join[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
         ret_soft[j] = soft
     return ret_soft
+
+
+def soft_max_prob(pred, wind_len, param, files, probs):
+    ret_soft = [[]] * files
+
+    for j in range(files):
+        if not (param == 0):
+            join = []
+            prob_over = []
+            for i in range(len(pred[j])):
+                if i < param:
+                    join.append(pred[j][i])
+                    prob_over.append(probs[j][i])
+                else:
+                    prob_over.append()
+                    join.append(Counter(pred[j][int(i - param):int(i)]).most_common(1)[0][0])
+        else:
+            join = pred[j]
+            prob_over = probs
+
+        soft = []
+        for i in range(len(join)):
+            if i < wind_len // 2:
+                soft.append(Counter(join[0:i + wind_len // 2]).most_common(1)[0][0])
+            elif i > len(join) - 1 - wind_len // 2:
+                soft.append(Counter(join[i - wind_len // 2:len(join) - 1]).most_common(1)[0][0])
+            else:
+                soft.append(Counter(join[i - wind_len // 2:i + wind_len // 2]).most_common(1)[0][0])
+        ret_soft[j] = soft
+    return ret_soft

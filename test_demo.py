@@ -69,10 +69,13 @@ def _main():
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real_labels = [CLASSES[i] for i in real]
     real_labels = utils.separate_labels(real_labels, test_generator.files_length)
+    probs_over = utils.separate_labels(prob_per_class, test_generator.files_length)
     
     # Class softening
     soft_labels = utils.soft_max(predicted_labels, wind_len, separation/overlap,
                                  len(test_generator.files_length))
+    # soft_labels = utils.soft_max_prob(predicted_labels, wind_len, separation/overlap,
+    #                                   len(test_generator.files_length), probs_over)
 
     # Save predicted and softened labels as a dictionary
     labels_dict = {'predicted_labels': predicted_labels,
