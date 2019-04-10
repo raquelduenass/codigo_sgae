@@ -12,6 +12,7 @@ import utils
 import numpy as np
 import librosa
 from scipy.io import wavfile
+from random import randint
 # ♥
 
 
@@ -37,7 +38,6 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label, sepa
     return data_list, label_list, moments_list
 
 
-# TODO: CORREGIR VARIOS AUDIOS
 def data_and_labels_mu_speak(label, music_file, pre_label,
                              start_list, end_list,
                              separation, overlap):
@@ -75,7 +75,6 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
         return label_list
 
 
-# TODO: CORREGIR VARIOS AUDIOS
 def create_database(root_data_path, separated, separation, overlap):
     
     data_list, label_list, moments_list = [], [], []
@@ -213,5 +212,89 @@ def data_files(data_path):
     return
 
 
+def fade_in_out(segment, sr_music):
+    fade_length = int(2*sr_music)
+    factor = 0
+    separations = 10
+    n_samples = int(librosa.get_duration(segment)*sr_music)
+    fade = segment[0:int(fade_length/separations)]*factor
+    for i in range(separations-1):
+        fade = np.append(fade, segment[int((i+1)*fade_length/separations):
+                                       int((i+2)*fade_length/separations)]*factor)
+        fade = fade[0:fade_length]
+        factor += 1/separations
+    rest = segment[fade_length:n_samples-fade_length]
+    for i in range(separations):
+        rest = np.append(fade, segment[int(n_samples-(separations-i)*fade_length/10):
+                                       int(n_samples-(separations-i-1)*fade_length/10)]*factor)
+        factor -= 1/separations
+
+    return fade, rest
+
+
+def get_transitions(duration):
+    init_transitions, transitions = [], []
+    for j in range(randint(1, 9)):
+        init_transitions.append(randint(0, int(duration)))
+    init_transitions.sort()
+    if init_transitions[0] >= 2:
+        transitions.append(init_transitions[0])
+    for k in range(len(init_transitions) - 1):
+        if init_transitions[k + 1] - init_transitions[k] > 4:
+            transitions.append(init_transitions[k + 1])
+    transitions.sort()
+    return transitions
+
+
+def create_manual_demo(data_path, save_path):
+    classes = os.listdir(data_path)
+    music_files = os.listdir(os.path.join(data_path, classes[0]))
+    speech_files = os.listdir(os.path.join(data_path, classes[1]))
+    file_names, labels = [], []
+
+    for i in range(len(music_files)):
+        audio_labels = []
+        music, sr_music = librosa.load(os.path.join(data_path, classes[0], music_files[i]))
+        speech, sr_speech = librosa.load(os.path.join(data_path, classes[1], speech_files[i]))
+        speech = librosa.resample(speech, sr_speech, sr_music)
+        duration = librosa.get_duration(music) + librosa.get_duration(speech)
+        gender = [music, speech]
+        initial = randint(0, 1)
+        last = [0, 0]
+        transitions = get_transitions(duration)
+
+        comb = gender[initial][0:transitions[0] * sr_speech]
+        if initial == 0:
+            audio_labels = audio_labels + ['music']*(transitions[0]-2)
+        else:
+            audio_labels = audio_labels + ['speech']*(transitions[0]-2)
+        last[initial] = transitions[0]
+        for j in range(len(transitions)-1):
+            case = (j + 1) % 2
+            dur = transitions[j+1] - transitions[j]
+            segment = gender[case][last[case]*sr_music:(last[case]+dur)*sr_music]
+            if len(segment) == 0:
+                break
+            else:
+                fade_in, ending = fade_in_out(segment, sr_music)
+                beginning, fade_out = comb[0:len(comb)-2*sr_music-1], comb[len(comb)-2*sr_music:]
+                comb = np.append(beginning, fade_in+fade_out)
+                comb = np.append(comb, ending)
+                audio_labels = audio_labels + ['music_speech']*2
+                if case == 0:
+                    audio_labels = audio_labels + ['music']*(dur-2)
+                else:
+                    audio_labels = audio_labels + ['speech']*(dur-2)
+        output_path = os.path.join(save_path, 'comb_'+str(i)+'.wav')
+        wavfile.write(output_path, sr_music, comb)
+        file_names.append(output_path)
+        labels.append(audio_labels)
+    utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
+    utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
+    return
+
+
 # classes_combination('C:/Users/rds/Documents/GitHub/data_sgae/', False, combs, 0.9)
-create_database('C:/Users/rds/Documents/GitHub/data_sgae/muspeak', False, 2, 0.5)
+# create_database('C:/Users/rds/Documents/GitHub/data_sgae/muspeak', False, 2, 0.5)
+create_manual_demo('C:/Users/rds/Documents/GitHub/data_sgae/demo_files/',
+                   'C:/Users/rds/Documents/GitHub/data_sgae/created_demo')

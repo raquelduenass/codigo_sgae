@@ -142,6 +142,7 @@ def separate_many_audio(self, index_array):
     audio, sr_old = librosa.load(self.file_names[actual_file],
                                  offset=offset,
                                  duration=duration)
+    print(str(actual_file))
     audio = librosa.resample(audio, sr_old, self.sr)
     real_duration = librosa.get_duration(audio)
     minus = 0
@@ -153,6 +154,7 @@ def separate_many_audio(self, index_array):
             else:
                 minus = j
                 actual_file = actual_file + 1
+                print(str(actual_file))
                 audio, sr_old = librosa.load(self.file_names[actual_file],
                                              duration=(self.batch_size - j) * self.overlap + self.separation)
                 audio = librosa.resample(audio, sr_old, self.sr)
