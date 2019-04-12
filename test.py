@@ -5,7 +5,7 @@ import sys
 from sklearn import metrics
 from keras import backend as k
 import utils
-import data_utils
+import utils_data
 from common_flags import FLAGS 
 
 # ♦ Constants
@@ -66,7 +66,7 @@ def _main():
     k.set_learning_phase(TEST_PHASE)
 
     # Generate testing data
-    test_data_gen = data_utils.DataGenerator(rescale=1./255)
+    test_data_gen = utils_data.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
     test_generator = test_data_gen.flow_from_directory('test',

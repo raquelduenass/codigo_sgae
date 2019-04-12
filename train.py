@@ -14,11 +14,11 @@ import logz
 import nets
 import cifar10_resnet
 import utils
-import data_utils
+import utils_data
 import log_utils
 from common_flags import FLAGS
 from time import time, strftime, localtime
-import database_process
+import process_database
 
 # Constants
 TRAIN_PHASE = 1
@@ -155,10 +155,10 @@ def _main():
     version = 2  # 1 o 2
     
     if flag_data:
-        database_process.classes_combination(FLAGS.data_path, False, [0, 1], music_pct)
-        database_process.create_database(FLAGS.data_path, True, separation)
-        database_process.create_database(FLAGS.demo_path, False, separation)
-        database_process.labels_demo(FLAGS.demo_path, 'labels.txt', num_classes)
+        process_database.classes_combination(FLAGS.data_path, False, [0, 1], music_pct)
+        process_database.create_database(FLAGS.data_path, True, separation)
+        process_database.create_database(FLAGS.demo_path, False, separation)
+        process_database.labels_demo(FLAGS.demo_path, 'labels.txt', num_classes)
 
     # Set training phase
     k.set_learning_phase(TRAIN_PHASE)
@@ -170,13 +170,13 @@ def _main():
         
     # Split the data into training, validation and test sets
     if FLAGS.initial_epoch == 0:
-        data_utils.cross_val_create(FLAGS.data_path)
+        utils_data.cross_val_create(FLAGS.data_path)
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
     # Generate training data with real-time augmentation
-    train_data_gen = data_utils.DataGenerator(rescale=1./255)
+    train_data_gen = utils_data.DataGenerator(rescale=1./255)
     
     # Iterator object containing training data to be generated batch by batch
     train_generator = train_data_gen.flow_from_directory('train',
@@ -189,7 +189,7 @@ def _main():
         " Not matching output dimensions in training data."
 
     # Generate validation data with real-time augmentation
-    val_data_gen = data_utils.DataGenerator(rescale=1./255)
+    val_data_gen = utils_data.DataGenerator(rescale=1./255)
     
     # Iterator object containing validation data to be generated batch by batch
     val_generator = val_data_gen.flow_from_directory('val',

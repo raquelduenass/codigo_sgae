@@ -8,7 +8,6 @@ from keras.utils.generic_utils import Progbar
 from keras.models import model_from_json
 
 from sklearn.metrics import confusion_matrix
-from collections import Counter
 
 
 def compute_predictions_and_gt(model, generator, steps,
@@ -281,92 +280,3 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
     elif phase == 'outer_test':
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
 
-
-def counting(data, label):
-    loc = [i for i in range(len(data)) if data[i] == label]
-    if not(len(loc) == 0):
-        pos = [loc[0]] + [loc[i+1] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
-        fin = [loc[i] for i in range(len(loc)-1) if (not (loc[i]+1 == loc[i+1]))]
-        fin.append(loc[-1])
-        length = [fin[i]-pos[i]+1 for i in range(len(pos))]
-    else:
-        pos = []
-        length = []
-    return pos, length
-
-
-def join_labels(pred, silence):
-    j = 0
-    for i in range(len(pred)):
-        while silence[j] != '':
-            j = j+1
-        silence[j] = pred[i]
-        j = j+1
-    return silence
-
-
-def separate_labels(pred, lengths):
-    labels = [[]]*len(lengths)
-    for i in range(len(lengths)):
-        if i == 0:
-            labels[i] = pred[0:lengths[i]]
-        else:
-            labels[i] = pred[lengths[i-1]+1:lengths[i]]
-    return labels
-
-
-# TODO: Introducir probabilidades de CNN
-def soft_max(pred, wind_len, param, files):
-    ret_soft = [[]]*files
-
-    for j in range(files):
-        if not(param == 0):
-            join = []
-            for i in range(len(pred[j])):
-                if i < param:
-                    join.append(pred[j][i])
-                else:
-                    join.append(Counter(pred[j][int(i-param):int(i)]).most_common(1)[0][0])
-        else:
-            join = pred[j]
-
-        soft = []
-        for i in range(len(join)):
-            if i < wind_len//2:
-                soft.append(Counter(join[0:i+wind_len//2]).most_common(1)[0][0])
-            elif i > len(join)-1-wind_len//2:
-                soft.append(Counter(join[i-wind_len//2:len(join)-1]).most_common(1)[0][0])
-            else:
-                soft.append(Counter(join[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
-        ret_soft[j] = soft
-    return ret_soft
-
-
-def soft_max_prob(pred, wind_len, param, files, probs):
-    ret_soft = [[]] * files
-
-    for j in range(files):
-        if not (param == 0):
-            join = []
-            prob_over = []
-            for i in range(len(pred[j])):
-                if i < param:
-                    join.append(pred[j][i])
-                    prob_over.append(probs[j][i])
-                else:
-                    prob_over.append()
-                    join.append(Counter(pred[j][int(i - param):int(i)]).most_common(1)[0][0])
-        else:
-            join = pred[j]
-            prob_over = probs
-
-        soft = []
-        for i in range(len(join)):
-            if i < wind_len // 2:
-                soft.append(Counter(join[0:i + wind_len // 2]).most_common(1)[0][0])
-            elif i > len(join) - 1 - wind_len // 2:
-                soft.append(Counter(join[i - wind_len // 2:len(join) - 1]).most_common(1)[0][0])
-            else:
-                soft.append(Counter(join[i - wind_len // 2:i + wind_len // 2]).most_common(1)[0][0])
-        ret_soft[j] = soft
-    return ret_soft

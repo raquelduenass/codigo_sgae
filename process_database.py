@@ -6,18 +6,27 @@ Created on Mon Dec 10 11:35:32 2018
 """
 from __future__ import print_function
 import os
-from pydub import AudioSegment
 import csv
 import utils
-import numpy as np
 import librosa
+import numpy as np
+import process_audio
+from pydub import AudioSegment
 from scipy.io import wavfile
 from random import randint
-# ♥
 
 
 def data_and_labels(music_path, data_list, label_list, moments_list, label, separation):
-    
+    """
+
+    :param music_path:
+    :param data_list:
+    :param label_list:
+    :param moments_list:
+    :param label:
+    :param separation:
+    :return:
+    """
     for music_file in os.listdir(music_path):
         entry_path = os.path.join(music_path, music_file)
         
@@ -39,8 +48,18 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label, sepa
 
 
 def data_and_labels_mu_speak(label, music_file, pre_label,
-                             start_list, end_list,
-                             separation, overlap):
+                             start_list, end_list, separation, overlap):
+    """
+
+    :param label:
+    :param music_file:
+    :param pre_label:
+    :param start_list:
+    :param end_list:
+    :param separation:
+    :param overlap:
+    :return:
+    """
     moments_list = []
     audio = AudioSegment.from_file(music_file, format="mp3")
     if not(overlap == 0):
@@ -76,7 +95,14 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
 
 
 def create_database(root_data_path, separated, separation, overlap):
-    
+    """
+
+    :param root_data_path:
+    :param separated:
+    :param separation:
+    :param overlap:
+    :return:
+    """
     data_list, label_list, moments_list = [], [], []
     
     if separated:
@@ -84,8 +110,7 @@ def create_database(root_data_path, separated, separation, overlap):
             data_list, label_list, moments_list = data_and_labels(os.path.join(root_data_path, classes),
                                                                   data_list, label_list, moments_list,
                                                                   classes, separation)
-        dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
-        label_list = list(map(dct.get, label_list))
+        label_list = utils.labels_to_number(label_list)
 
     else:
         for csv_file in os.listdir(os.path.join(root_data_path, 'meta')):
@@ -128,7 +153,14 @@ def create_database(root_data_path, separated, separation, overlap):
 
 
 def classes_combination(root_data_path, equal, combs, speech_pct):
-    
+    """
+
+    :param root_data_path:
+    :param equal:
+    :param combs:
+    :param speech_pct:
+    :return:
+    """
     classes = os.listdir(root_data_path)
     speech_path = os.path.join(root_data_path, classes[combs[1]])
     music_path = os.path.join(root_data_path, classes[combs[0]])
@@ -163,27 +195,13 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
     return
 
 
-def compute_mel_gram(src, sr, power, duration):
-
-    # mel-spectrogram parameters
-    n_fft = 512
-    n_mel = 96
-    hop_len = 256
-    n_sample = src.shape[0]
-    n_sample_fit = int(duration*sr)
-
-    if n_sample < n_sample_fit:  # if too short
-        src = np.concatenate([src, np.zeros((int(duration*sr) - n_sample,))])
-    elif n_sample > n_sample_fit:  # if too long
-        src = src[int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
-    mel = librosa.feature.melspectrogram(
-            y=src, sr=sr, hop_length=hop_len,
-            n_fft=n_fft, n_mels=n_mel, power=power)
-    ret = librosa.power_to_db(mel)
-    return ret
-
-
 def extract_spec_grams(data_path, save_path):
+    """
+
+    :param data_path:
+    :param save_path:
+    :return:
+    """
     separation = 2
     power = 2
     for classes in os.listdir(data_path):
@@ -194,12 +212,17 @@ def extract_spec_grams(data_path, save_path):
                 audio, sr = librosa.load(file_path)
                 for i in range(0, int(librosa.get_duration(audio)), separation):
                     segment = audio[i*sr:(i+separation)*sr]
-                    mel = compute_mel_gram(segment, sr, power, separation)
+                    mel = process_audio.compute_mel_gram(separation, sr, power, segment)
                     np.save(os.path.join(save_path, classes, 'mel_'+str(j)+'.npy'), mel)
                     j = j+1
 
 
 def data_files(data_path):
+    """
+
+    :param data_path:
+    :return:
+    """
     file_names, labels = [], []
     for classes in os.listdir(data_path):
         class_path = os.path.join(data_path, classes)
@@ -212,27 +235,12 @@ def data_files(data_path):
     return
 
 
-def fade_in_out(segment, sr_music):
-    fade_length = int(2*sr_music)
-    factor = 0
-    separations = 10
-    n_samples = int(librosa.get_duration(segment)*sr_music)
-    fade = segment[0:int(fade_length/separations)]*factor
-    for i in range(separations-1):
-        fade = np.append(fade, segment[int((i+1)*fade_length/separations):
-                                       int((i+2)*fade_length/separations)]*factor)
-        fade = fade[0:fade_length]
-        factor += 1/separations
-    rest = segment[fade_length:n_samples-fade_length]
-    for i in range(separations):
-        rest = np.append(fade, segment[int(n_samples-(separations-i)*fade_length/10):
-                                       int(n_samples-(separations-i-1)*fade_length/10)]*factor)
-        factor -= 1/separations
-
-    return fade, rest
-
-
 def get_transitions(duration):
+    """
+
+    :param duration:
+    :return:
+    """
     init_transitions, transitions = [], []
     for j in range(randint(1, 9)):
         init_transitions.append(randint(0, int(duration)))
@@ -247,6 +255,12 @@ def get_transitions(duration):
 
 
 def create_manual_demo(data_path, save_path):
+    """
+
+    :param data_path:
+    :param save_path:
+    :return:
+    """
     classes = os.listdir(data_path)
     music_files = os.listdir(os.path.join(data_path, classes[0]))
     speech_files = os.listdir(os.path.join(data_path, classes[1]))
@@ -276,7 +290,7 @@ def create_manual_demo(data_path, save_path):
             if len(segment) == 0:
                 break
             else:
-                fade_in, ending = fade_in_out(segment, sr_music)
+                fade_in, ending = process_audio.fade_in_out(segment, sr_music)
                 beginning, fade_out = comb[0:len(comb)-2*sr_music-1], comb[len(comb)-2*sr_music:]
                 comb = np.append(beginning, fade_in+fade_out)
                 comb = np.append(comb, ending)
@@ -292,9 +306,3 @@ def create_manual_demo(data_path, save_path):
     utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
     return
-
-
-# classes_combination('C:/Users/rds/Documents/GitHub/data_sgae/', False, combs, 0.9)
-# create_database('C:/Users/rds/Documents/GitHub/data_sgae/muspeak', False, 2, 0.5)
-create_manual_demo('C:/Users/rds/Documents/GitHub/data_sgae/demo_files/',
-                   'C:/Users/rds/Documents/GitHub/data_sgae/created_demo')
