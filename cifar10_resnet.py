@@ -72,7 +72,7 @@ def resnet_layer(inputs,
     return x
 
 
-def resnet_v1(input_shape, depth, num_classes=10):
+def resnet_v1(input_shape, depth, num_classes, f_output):
     """ResNet Version 1 Model builder [a]
     Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
     Last ReLU is after the shortcut connection.
@@ -97,6 +97,9 @@ def resnet_v1(input_shape, depth, num_classes=10):
     # Returns
         model (Model): Keras model instance
     """
+    if f_output == 'sigmoid':
+        num_classes = num_classes-1
+
     if (depth - 2) % 6 != 0:
         raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
     # Start model definition.
@@ -133,7 +136,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
     outputs = Dense(num_classes,
-                    activation='softmax',
+                    activation=f_output,
                     kernel_initializer='he_normal')(y)
 
     # Instantiate model.
@@ -141,7 +144,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
     return model
 
 
-def resnet_v2(input_shape, depth, num_classes=10):
+def resnet_v2(input_shape, depth, num_classes, f_output):
     """ResNet Version 2 Model builder [b]
     Stacks of (1 x 1)-(3 x 3)-(1 x 1) BN-ReLU-Conv2D or also known as
     bottleneck layer
@@ -163,6 +166,9 @@ def resnet_v2(input_shape, depth, num_classes=10):
     # Returns
         model (Model): Keras model instance
     """
+    if f_output == 'sigmoid':
+        num_classes = num_classes-1
+
     if (depth - 2) % 9 != 0:
         raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
     # Start model definition.
@@ -224,7 +230,7 @@ def resnet_v2(input_shape, depth, num_classes=10):
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
     outputs = Dense(num_classes,
-                    activation='softmax',
+                    activation=f_output,
                     kernel_initializer='he_normal')(y)
 
     # Instantiate model.

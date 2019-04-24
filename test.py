@@ -8,12 +8,10 @@ import utils
 import utils_data
 from common_flags import FLAGS 
 
-# ♦ Constants
+# Constants
 TEST_PHASE = 1
-power = 2
-sr = 22050
-separation = 2
 CLASSES = ['M', 'MH', 'H', 'R']
+
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 

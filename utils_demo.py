@@ -1,12 +1,11 @@
 import os
 import numpy as np
-
-from keras.preprocessing.image import Iterator
-from keras.preprocessing.image import ImageDataGenerator
-from common_flags import FLAGS
 import utils
 import librosa
 import process_audio
+from keras.preprocessing.image import Iterator
+from keras.preprocessing.image import ImageDataGenerator
+from common_flags import FLAGS
 
 
 class DataGenerator(ImageDataGenerator):
@@ -56,27 +55,25 @@ class DirectoryIterator(Iterator):
         self.overlap = overlap
 
         # File of database for the phase
-        dirs_file = os.path.join(FLAGS.demo_path, 'data.txt')
+        self.file_names = utils.file_to_list(os.path.join(FLAGS.demo_path, 'data.txt'))
 
-        self.file_names = utils.file_to_list(dirs_file)
-        self.files_length = [[]]*len(self.file_names)
+        # Check if data set is empty
+        if len(self.file_names) == 0:
+            raise IOError("Did not find any data")
 
         # Calculate number of samples
+        self.files_length = []
         for i in range(len(self.file_names)):
             audio, sr_old = librosa.load(self.file_names[i])
             audio = librosa.resample(audio, sr_old, self.sr)
             if i == 0:
-                self.files_length[i] = int((librosa.get_duration(audio) -
-                                            self.separation) // self.overlap)
+                self.files_length.append(int((librosa.get_duration(audio) -
+                                              self.separation) // self.overlap))
             else:
-                self.files_length[i] = int(self.files_length[i-1]) +\
-                                       int((librosa.get_duration(audio) -
-                                            self.separation) // self.overlap)
+                self.files_length.append(int(self.files_length[i-1]) +
+                                         int((librosa.get_duration(audio) -
+                                              self.separation) // self.overlap))
         self.samples = self.files_length[len(self.files_length)-1]
-        
-        # Check if data set is empty
-        if len(self.file_names) == 0:
-            raise IOError("Did not find any data")
         
         # Silence labels
         self.silence_labels = [[]]*self.samples

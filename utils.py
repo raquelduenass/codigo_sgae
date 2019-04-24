@@ -206,6 +206,9 @@ def file_to_list(f_name):
         data = f.readlines()
     for item in data:
         ret_data.append(item.split('\n')[0])
+    for item in ret_data:
+        if item == "" or None:
+            ret_data.remove(item)
     return ret_data
     
 

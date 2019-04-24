@@ -2,54 +2,47 @@ from sklearn import metrics
 from collections import Counter
 
 
-def show_metrics(real, predicted, soft):  # , probabilities):
+def show_metrics(real, predicted, soft):
     """
     Printing of the main metrics to check the performance of the system
     :param real: ground truth
     :param predicted: predictions from the CNN and silence
     :param soft: softened predictions
     """
-    before_ave_accuracy, before_precision, before_recall, before_f_score = [], [], [], []
-    after_ave_accuracy, after_precision, after_recall, after_f_score = [], [], [], []
 
-    for i in range(len(real)):
-        real[i] = real[i][:len(predicted[i])]
+    real = real[:len(predicted)]
 
-        # Accuracy before softening
-        before_ave_accuracy.append(metrics.accuracy_score(real[i], predicted[i]))
-        before_precision.append(metrics.precision_score(real[i], predicted[i], average='weighted'))
-        before_recall.append(metrics.recall_score(real[i], predicted[i], average='weighted'))
-        before_f_score.append(metrics.f1_score(real[i], predicted[i], average='weighted'))
-        # metrics.precision_recall_curve(real, probabilities)
+    # Metrics before softening
+    print('Average accuracy before softening= ', metrics.accuracy_score(real, predicted))
+    print('Precision before softening= ', metrics.precision_score(real, predicted, average='weighted'))
+    print('Recall before softening= ', metrics.recall_score(real, predicted, average='weighted'))
+    print('F-score before softening= ', metrics.f1_score(real, predicted, average='weighted'))
 
-        # Accuracy after softening
-        after_ave_accuracy.append(metrics.accuracy_score(real[i], soft[i]))
-        after_precision.append(metrics.precision_score(real[i], soft[i], average='weighted'))
-        after_recall.append(metrics.recall_score(real[i], soft[i], average='weighted'))
-        after_f_score.append(metrics.f1_score(real[i], soft[i], average='weighted'))
-
-    before_ave_accuracy = sum(before_ave_accuracy)/len(real)
-    before_precision = sum(before_precision) / len(real)
-    before_recall = sum(before_recall) / len(real)
-    before_f_score = sum(before_f_score) / len(real)
-    after_ave_accuracy = sum(after_ave_accuracy) / len(real)
-    after_precision = sum(after_precision) / len(real)
-    after_recall = sum(after_recall) / len(real)
-    after_f_score = sum(after_f_score) / len(real)
-
-    print('Average accuracy before softening= ', before_ave_accuracy)
-    print('Precision before softening= ', before_precision)
-    print('Recall before softening= ', before_recall)
-    print('F-score before softening= ', before_f_score)
-    print('Average accuracy after softening= ', after_ave_accuracy)
-    print('Precision after softening= ', after_precision)
-    print('Recall after softening= ', after_recall)
-    print('F-score after softening= ', after_f_score)
+    # Accuracy after softening
+    print('Average accuracy after softening= ', metrics.accuracy_score(real, soft))
+    print('Precision after softening= ', metrics.precision_score(real, soft, average='weighted'))
+    print('Recall after softening= ', metrics.recall_score(real, soft, average='weighted'))
+    print('F-score after softening= ', metrics.f1_score(real, soft, average='weighted'))
     return
 
 
-# TODO: Introducir probabilidades de CNN
+def show_detections(labels, separation, overlap):
+    music_pos, music_dur = counting(labels, 'M')
+    print('Music detected in:')
+    for i in range(len(music_pos)):
+        if overlap == 0:
+            print('Beginning: ', (music_pos[i] * separation) // 60, 'min ',
+                  int((music_pos[i] * separation) % 60),
+                  'seg - Duration: ', music_dur[i] * separation)
+        else:
+            print('Beginning: ', int((music_pos[i] * overlap) // 60), 'min ',
+                  int((music_pos[i] * overlap) % 60),
+                  'seg - Duration: ', music_dur[i] * overlap)
+    return
+
+
 def soft_max_prob(predicted, wind_len, param, files, probabilities):
+    # TODO: Introduce probabilities of CNN
     """
 
     :param predicted:
@@ -77,7 +70,7 @@ def soft_max_prob(predicted, wind_len, param, files, probabilities):
                     join.append(predicted[j][prob_over[i].index(max(prob_over[i]))])
         else:
             join = predicted[j]
-            prob_over = probabilities
+            # prob_over = probabilities
 
         soft = []
         for i in range(len(join)):
@@ -178,12 +171,17 @@ def separate_labels(predicted, lengths):
     return labels
 
 
-def labels_to_number(labels):
+def labels_to_number(labels, f_output):
     """
 
     :param labels:
+    :param f_output:
     :return:
     """
-    dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
+    if f_output == 'sigmoid':
+        dct = {'music': [1, 0, 0], 'music_speech': [1, 1, 0],
+               'speech': [0, 1, 0], 'noise': [0, 0, 1]}
+    else:
+        dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
     numbers = list(map(dct.get, labels))
     return numbers

@@ -2,12 +2,13 @@ import os
 import utils
 import numpy as np
 import keras
-import process_label
 from keras import backend as k
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
+import process_audio
+import librosa
 
 
 class DataGenerator(ImageDataGenerator):
@@ -52,25 +53,28 @@ class DirectoryIterator(Iterator):
         # File of database for the phase
         if directory == 'train':
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'train_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_rootdir, 'train_moments.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt')
         elif directory == 'val':
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'val_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt')
         else:
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
             labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
         
-        self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file,
-                                                            FLAGS.f_output)
+        self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         
         # Number of samples in data
         self.samples = len(self.file_names)
+        self.num_classes = len(set(self.ground_truth))
         # Check if data is empty
         if self.samples == 0:
             raise IOError("Did not find any data")
 
         print('Found {} images belonging to {} classes.'.format(
-                self.samples, FLAGS.num_classes))
+                self.samples, self.num_classes))
 
         super(DirectoryIterator, self).__init__(self.samples, batch_size, shuffle, seed)
 
@@ -92,12 +96,12 @@ class DirectoryIterator(Iterator):
         # Returns: The next batch of images and categorical labels.
         """
                     
-        # Initialize batches and indexes
+        # Initialize batches
         batch_x, batch_y_p = [], []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = np.load(self.file_names[j])
+            x = load_audio(self, j)
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -123,6 +127,7 @@ def cross_val_create(path):
     """
     # File names, moments and labels of all samples in data.
     file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
+    moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
     labels = utils.file_to_list(os.path.join(path, 'labels.txt'))
     order = list(range(len(file_names)))
     sh(order)
@@ -137,6 +142,12 @@ def cross_val_create(path):
                        os.path.join(FLAGS.experiment_rootdir, 'val_files.txt'))
     utils.list_to_file([file_names[i] for i in order[0:index4]],
                        os.path.join(FLAGS.experiment_rootdir, 'test_files.txt'))
+    utils.list_to_file([moments[i] for i in order[index2:]],
+                       os.path.join(FLAGS.experiment_rootdir, 'train_moments.txt'))
+    utils.list_to_file([moments[i] for i in order[index4:index2]],
+                       os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt'))
+    utils.list_to_file([moments[i] for i in order[0:index4]],
+                       os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt'))
     utils.list_to_file([labels[i] for i in order[index2:]],
                        os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt'))
     utils.list_to_file([labels[i] for i in order[index4:index2]],
@@ -146,17 +157,29 @@ def cross_val_create(path):
     return
 
 
-def cross_val_load(dirs_file, labels_file, f_output):
+def cross_val_load(dirs_file, moments_file, labels_file):
     """
 
     :param dirs_file:
+    :param moments_file:
     :param labels_file:
-    :param f_output:
     :return:
     """
     dirs_list = utils.file_to_list(dirs_file)
+    moments_list = utils.file_to_list(moments_file)
+    moments_list = [int(i) for i in moments_list]
     labels_list = utils.file_to_list(labels_file)
-    labels_list = process_label.labels_to_number(labels_list, f_output)
-    labels_list = [np.array(i) for i in labels_list]
-    # labels_list = [int(i) for i in labels_list]
-    return dirs_list, labels_list  # np.array(labels_list, dtype=k.floatx())
+    labels_list = [int(i) for i in labels_list]
+    return dirs_list, np.array(moments_list, dtype=k.floatx()), np.array(labels_list, dtype=k.floatx())
+
+
+def load_audio(self, j):
+    """
+
+    :param self:
+    :param j:
+    :return:
+    """
+    segment = librosa.load(self.dirs_file[j], offset=self.moments[j], duration=FLAGS.separation)
+    spec = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr, FLAGS.power, segment)
+    return spec

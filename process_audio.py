@@ -5,9 +5,10 @@ import numpy as np
 def fade_in_out(segment, sr_music):
     """
 
-    :param segment:
-    :param sr_music:
-    :return:
+    :param segment: audio sequence
+    :param sr_music: sample rate of the audios
+    :return fade: fade-in transition
+    :return rest: merge of the no fading and fade-out transition sequences
     """
     fade_length = int(2 * sr_music)
     factor = 0
@@ -33,7 +34,7 @@ def separate_many_audio(self, index_array):
 
     :param self:
     :param index_array:
-    :return:
+    :return segments:
     """
     segments = []
     actual_file = 0
@@ -83,12 +84,12 @@ def separate_many_audio(self, index_array):
 
 def compute_mel_gram(separation, sr, power, segment):
     """
-
-    :param separation:
-    :param sr:
-    :param power:
-    :param segment:
-    :return:
+    Computation of the mel-spectrogram of an audio sequence
+    :param separation: time duration represented in the spectrogram
+    :param sr: sample rate of the audio
+    :param power: representation of the spectrogram: energy/power
+    :param segment: audio fragment from which extracting the mel-spectrogram
+    :return ret: mel-spectrogram
     """
     n_fft = 512
     n_mel = 96
@@ -114,7 +115,7 @@ def silence_detection(audio_slice):
     """
 
     :param audio_slice:
-    :return:
+    :return silence:
     """
     silence_thresh = -16
     silence = librosa.feature.rmse(audio_slice) <= silence_thresh

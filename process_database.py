@@ -217,21 +217,26 @@ def extract_spec_grams(data_path, save_path):
                     j = j+1
 
 
-def data_files(data_path):
+def data_files(data_path, separation):
     """
 
     :param data_path:
+    :param separation:
     :return:
     """
-    file_names, labels = [], []
+    file_names, labels, moments = [], [], []
     for classes in os.listdir(data_path):
         class_path = os.path.join(data_path, classes)
         for files in os.listdir(class_path):
-            file_names.append(os.path.join(class_path, files))
-            labels.append(classes)
+            length = librosa.get_duration(librosa.load(os.path.join(class_path, files))[0])
+            for moment in range(0, int(length), separation):
+                moments.append(moment)
+                labels.append(classes)
+                file_names.append(os.path.join(class_path, files))
 
     utils.list_to_file(file_names, os.path.join(data_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(data_path, 'labels.txt'))
+    utils.list_to_file(moments, os.path.join(data_path, 'moments.txt'))
     return
 
 
@@ -306,3 +311,6 @@ def create_manual_demo(data_path, save_path):
     utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
     return
+
+
+data_files('C:/Users/rds/Documents/GitHub/data_sgae/mixed', 2)
