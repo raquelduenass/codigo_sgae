@@ -311,6 +311,3 @@ def create_manual_demo(data_path, save_path):
     utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
     return
-
-
-data_files('C:/Users/rds/Documents/GitHub/data_sgae/mixed', 2)

@@ -100,9 +100,10 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
        initial_epoch: Epoch from which training starts.
     """
     # Configure training process
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss='mse',  # 'categorical_crossentropy'
                   optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                  metrics=['categorical_accuracy'])
+                  metrics=['mse'])
+    # metrics=['categorical_accuracy'])
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_rootdir, 'weights_{epoch:03d}.h5')
