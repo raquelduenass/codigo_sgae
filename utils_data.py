@@ -8,6 +8,7 @@ from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
+import time
 
 
 class DataGenerator(ImageDataGenerator):
@@ -65,6 +66,7 @@ class DirectoryIterator(Iterator):
         
         # Number of samples in data
         self.samples = len(self.file_names)
+        self.num_classes = len(np.unique(self.ground_truth, axis=0))
         # Check if data is empty
         if self.samples == 0:
             raise IOError("Did not find any data")
@@ -91,13 +93,18 @@ class DirectoryIterator(Iterator):
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-                    
+
+        #startGlobal = time.time()
+
         # Initialize batches and indexes
         batch_x, batch_y_p = [], []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
+            #startlocal = time.time()
             x = np.load(self.file_names[j])
+            #endlocal = time.time()
+            #print("Local time:{}".format(endlocal - startlocal))
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -111,7 +118,10 @@ class DirectoryIterator(Iterator):
         else:
             batch_y = batch_y_p
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
-    
+
+        #endGlobal = time.time()
+        #print("Global time:{}".format(endGlobal - startGlobal))
+
         return batch_x, np.asarray(batch_y)
 
 

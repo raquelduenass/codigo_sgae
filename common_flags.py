@@ -18,7 +18,7 @@ gflags.DEFINE_integer('power', 2, 'Type of value represented in spectrogram')
 # Training parameters
 gflags.DEFINE_integer('n', 1, 'depth of network')
 gflags.DEFINE_integer('version', 2, 'ResNet block type')
-gflags.DEFINE_boolean('from_audio', True, 'Input to the net from audio or image')
+gflags.DEFINE_boolean('from_audio', False, 'Input to the net from audio or image')
 gflags.DEFINE_integer('batch_size', 32, 'Batch size in training and evaluation')
 gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
 gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
@@ -28,7 +28,7 @@ gflags.DEFINE_string('f_output', 'sigmoid', 'Output function')
 # Files
 gflags.DEFINE_string('experiment_rootdir', "./models/test_6", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "./../data_sgae/mixed",
+gflags.DEFINE_string('data_path', "./../data_sgae/spectrograms_npy",
                      'Folder containing the whole data set')
 gflags.DEFINE_string('demo_path', "../data_sgae/muspeak",
                      'Folder containing the demo dataset')

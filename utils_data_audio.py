@@ -9,6 +9,8 @@ from random import shuffle as sh
 from common_flags import FLAGS
 import process_audio
 import librosa
+import time
+import process_label
 
 
 class DataGenerator(ImageDataGenerator):
@@ -95,13 +97,17 @@ class DirectoryIterator(Iterator):
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-                    
+        startGlobal = time.time()
+
         # Initialize batches
         batch_x, batch_y_p = [], []
-        
+
         # Build batch of image data
         for i, j in enumerate(index_array):
+            startlocal = time.time()
             x = load_audio(self, j)
+            endlocal = time.time()
+            print("Local time:{}".format(endlocal - startlocal))
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -115,7 +121,10 @@ class DirectoryIterator(Iterator):
         else:
             batch_y = batch_y_p
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
-    
+
+        endGlobal = time.time()
+        print("Global time:{}".format(endGlobal - startGlobal))
+
         return batch_x, np.asarray(batch_y)
 
 
@@ -169,7 +178,8 @@ def cross_val_load(dirs_file, moments_file, labels_file):
     moments_list = utils.file_to_list(moments_file)
     moments_list = [int(i) for i in moments_list]
     labels_list = utils.file_to_list(labels_file)
-    labels_list = [int(i) for i in labels_list]
+    labels_list = process_label.labels_to_number(labels_list, 'softmax')
+    labels_list = [np.array(i) for i in labels_list]
     return dirs_list, np.array(moments_list, dtype=k.floatx()), np.array(labels_list, dtype=k.floatx())
 
 
@@ -180,6 +190,6 @@ def load_audio(self, j):
     :param j:
     :return:
     """
-    segment = librosa.load(self.dirs_file[j], offset=self.moments[j], duration=FLAGS.separation)
+    segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
     spec = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr, FLAGS.power, segment)
     return spec
