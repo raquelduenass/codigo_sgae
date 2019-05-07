@@ -2,15 +2,14 @@ import os
 import utils
 import numpy as np
 import keras
+import librosa
+import process_audio
+import process_label
 from keras import backend as k
 from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
-import process_audio
-import librosa
-import time
-import process_label
 
 
 class DataGenerator(ImageDataGenerator):
@@ -97,17 +96,13 @@ class DirectoryIterator(Iterator):
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-        startGlobal = time.time()
 
         # Initialize batches
         batch_x, batch_y_p = [], []
 
         # Build batch of image data
         for i, j in enumerate(index_array):
-            startlocal = time.time()
             x = load_audio(self, j)
-            endlocal = time.time()
-            print("Local time:{}".format(endlocal - startlocal))
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -122,17 +117,14 @@ class DirectoryIterator(Iterator):
             batch_y = batch_y_p
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
 
-        endGlobal = time.time()
-        print("Global time:{}".format(endGlobal - startGlobal))
-
         return batch_x, np.asarray(batch_y)
 
 
 def cross_val_create(path):
     """
 
-    :param path:
-    :return:
+    :param path: folder containing the data
+    :return: split of the data in train, validation and test sets
     """
     # File names, moments and labels of all samples in data.
     file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
@@ -172,7 +164,9 @@ def cross_val_load(dirs_file, moments_file, labels_file):
     :param dirs_file:
     :param moments_file:
     :param labels_file:
-    :return:
+    :return dirs_list:
+    :return moments_list:
+    :return labels_list:
     """
     dirs_list = utils.file_to_list(dirs_file)
     moments_list = utils.file_to_list(moments_file)

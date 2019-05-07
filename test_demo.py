@@ -64,8 +64,7 @@ def _main():
     # Predicted labels
     silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(prob_per_class, axis=-1)]
-    predicted_labels = process_label.join_labels(classes, silence_labels)
-    predicted_labels = process_label.separate_labels(predicted_labels, test_generator.files_length)
+    predicted_labels = process_label.join_labels(classes, silence_labels, test_generator.files_length)
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real_labels = [[]] * len(test_generator.files_length)
     for j in range(len(test_generator.files_length)):

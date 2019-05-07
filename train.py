@@ -26,28 +26,6 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
-# def get_model(img_height, img_width, output_dim, weights_path):
-#    """
-#    Initialize model.
-#    # Arguments
-#       img_width: Target image width.
-#       img_height: Target image height.
-#       num_img: Target images per block
-#       output_dim: Dimension of model output (number of classes).
-#       weights_path: Path to pre-trained model.
-#    # Returns
-#       model: A Model instance.
-#   """
-#     model = nets.resnet50(img_height, img_width, 1, output_dim)
-#    if weights_path:
-#        try:
-#            model.load_weights(weights_path)
-#            print("Loaded model from {}".format(weights_path))
-#        except ImportError:
-#            print("Impossible to find weight path. Returning untrained model")
-#    return model
-
-
 def get_model_res_net(n, version, img_height, img_width, output_dim, weights_path, f_output):
     """
     Initialize model.
@@ -100,9 +78,9 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
        initial_epoch: Epoch from which training starts.
     """
     # Configure training process
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss='mse',
                   optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                  metrics=['categorical_accuracy'])
+                  metrics=['mse'])
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_rootdir, 'weights_{epoch:03d}.h5')
@@ -134,7 +112,10 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                         callbacks=callbacks,
                         validation_data=val_data_generator,
                         validation_steps=validation_steps,
-                        initial_epoch=initial_epoch)
+                        initial_epoch=initial_epoch,
+                        max_queue_size=10,
+                        workers=2,
+                        use_multiprocessing=False)
 
 
 def _main():

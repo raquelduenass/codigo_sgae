@@ -6,7 +6,6 @@ import itertools
 
 from keras.utils.generic_utils import Progbar
 from keras.models import model_from_json
-
 from sklearn.metrics import confusion_matrix
 
 
@@ -98,7 +97,7 @@ def compute_predictions_and_gt(model, generator, steps,
 
 def compute_predictions(model, generator, steps, verbose=0):
     """
-    Generate predictions and associated ground truth for the input samples
+    Generate predictions for the input samples
     from a data generator. The generator should return the same kind of data as
     accepted by `predict_on_batch`.
     
@@ -195,12 +194,18 @@ def json_to_model(json_model_path):
 
 
 def list_to_file(data, f_name):
+    """
+    Save list into txt file.
+    """
     with open(f_name, 'w') as f:
         for item in data:
             f.write("%s\n" % item)
 
 
 def file_to_list(f_name):
+    """
+    Load list from txt file.
+    """
     ret_data = []
     with open(f_name, 'r') as f:
         data = f.readlines()
@@ -282,4 +287,3 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         plt.savefig(os.path.join(path_to_results, "confusion.png"))
     elif phase == 'outer_test':
         plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
-

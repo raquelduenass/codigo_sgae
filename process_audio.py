@@ -91,9 +91,9 @@ def compute_mel_gram(separation, sr, power, segment):
     :param segment: audio fragment from which extracting the mel-spectrogram
     :return ret: mel-spectrogram
     """
-    n_fft = 512
-    n_mel = 96
-    hop_len = 256
+    n_fft = 1102  # 512
+    n_mel = 64  # 96
+    hop_len = 441  # 256
     n_sample = segment.shape[0]
     n_sample_fit = int(separation*sr)
 

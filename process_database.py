@@ -19,13 +19,15 @@ from random import randint
 def data_and_labels(music_path, data_list, label_list, moments_list, label, separation):
     """
 
-    :param music_path:
+    :param music_path: folder containing the data
     :param data_list:
     :param label_list:
     :param moments_list:
-    :param label:
-    :param separation:
-    :return:
+    :param label: ground truth of the subset of samples
+    :param separation: represented time in each spectrogram
+    :return data_list:
+    :return label_list:
+    :return moments_list:
     """
     for music_file in os.listdir(music_path):
         entry_path = os.path.join(music_path, music_file)
@@ -50,15 +52,14 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label, sepa
 def data_and_labels_mu_speak(label, music_file, pre_label,
                              start_list, end_list, separation, overlap):
     """
-
     :param label:
     :param music_file:
     :param pre_label:
     :param start_list:
     :param end_list:
-    :param separation:
-    :param overlap:
-    :return:
+    :param separation: represented time in each spectrogram
+    :param overlap: temporal overlap between contiguous spectrograms from the same audio
+    :return label_list:
     """
     moments_list = []
     audio = AudioSegment.from_file(music_file, format="mp3")
@@ -97,10 +98,10 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
 def create_database(root_data_path, separated, separation, overlap):
     """
 
-    :param root_data_path:
-    :param separated:
-    :param separation:
-    :param overlap:
+    :param root_data_path: folder containing the data
+    :param separated: boolean indicating if the audio files are separated in folders according to each class (True) or not
+    :param separation: represented time in each spectrogram
+    :param overlap: temporal overlap between contiguous spectrograms from the same audio
     :return:
     """
     data_list, label_list, moments_list = [], [], []
@@ -154,12 +155,11 @@ def create_database(root_data_path, separated, separation, overlap):
 
 def classes_combination(root_data_path, equal, combs, speech_pct):
     """
-
-    :param root_data_path:
-    :param equal:
-    :param combs:
-    :param speech_pct:
-    :return:
+    :param root_data_path: folder containing the data
+    :param equal: boolean indicating if the files are all of the same length (True)
+    :param combs: array indicating the position of the classes to be mixed
+    :param speech_pct: percentage of the level of speech over another class
+    :return: creation of mixed classes files
     """
     classes = os.listdir(root_data_path)
     speech_path = os.path.join(root_data_path, classes[combs[1]])
@@ -188,7 +188,7 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
         comb = speech_pct*speech+(1-speech_pct)*music
         if combs[0] == 0:
             folder = 'music_speech'
-        else:  # if combs[0] == 2:
+        else:
             folder = 'speech_noise'
         output_path = os.path.join(root_data_path, folder, 'comb_'+str(i)+'.wav')
         wavfile.write(output_path, sr_music, comb)
@@ -197,12 +197,11 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
 
 def extract_spec_grams(data_path, save_path):
     """
-
-    :param data_path:
-    :param save_path:
-    :return:
+    :param data_path: folder containing the audio files
+    :param save_path: folder to be containing the spectrograms
+    :return: creation of spectrograms from segments of the audio files
     """
-    separation = 2
+    separation = 0.96
     power = 2
     for classes in os.listdir(data_path):
         j = 0
@@ -210,29 +209,38 @@ def extract_spec_grams(data_path, save_path):
             file_path = os.path.join(data_path, classes, files)
             if file_path.endswith('.wav') or file_path.endswith('.mp3'):
                 audio, sr = librosa.load(file_path)
-                for i in range(0, int(librosa.get_duration(audio)), separation):
-                    segment = audio[i*sr:(i+separation)*sr]
+                audio = librosa.resample(audio, sr, 44100)
+                sr = 44100
+                set = list(np.arange(start=0, stop=librosa.get_duration(audio), step=separation))
+                set = [np.round(i, decimals=2) for i in set]
+                for i in range(len(set)):  # range(0, int(librosa.get_duration(audio)), int(separation)):
+                    segment = audio[int(i*separation*sr):int((i+1)*separation*sr)]
                     mel = process_audio.compute_mel_gram(separation, sr, power, segment)
                     np.save(os.path.join(save_path, classes, 'mel_'+str(j)+'.npy'), mel)
                     j = j+1
 
 
-def data_files(data_path, separation):
+def data_files(data_path, separation=0, from_audio=False):
     """
-
-    :param data_path:
-    :param separation:
-    :return:
+    :param data_path: folder containing the data
+    :param separation: temporal frame of each spectrogram
+    :param from_audio: boolean indicating if the data is audio (True) or spectrograms (False)
+    :return: txt files are created
     """
     file_names, labels, moments = [], [], []
     for classes in os.listdir(data_path):
         class_path = os.path.join(data_path, classes)
-        for files in os.listdir(class_path):
-            length = librosa.get_duration(librosa.load(os.path.join(class_path, files))[0])
-            for moment in range(0, int(length), separation):
-                moments.append(moment)
-                labels.append(classes)
-                file_names.append(os.path.join(class_path, files))
+
+        if from_audio:
+            for files in os.listdir(class_path):
+                length = librosa.get_duration(librosa.load(os.path.join(class_path, files))[0])
+                for moment in range(0, int(length), separation):
+                    moments.append(moment)
+                    labels.append(classes)
+                    file_names.append(os.path.join(class_path, files))
+        else:
+            file_names = file_names + [os.path.join(class_path, files) for files in os.listdir(class_path)]
+            labels = labels + [classes for files in os.listdir(class_path)]
 
     utils.list_to_file(file_names, os.path.join(data_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(data_path, 'labels.txt'))
@@ -242,9 +250,8 @@ def data_files(data_path, separation):
 
 def get_transitions(duration):
     """
-
     :param duration:
-    :return:
+    :return transitions:
     """
     init_transitions, transitions = [], []
     for j in range(randint(1, 9)):
@@ -261,10 +268,9 @@ def get_transitions(duration):
 
 def create_manual_demo(data_path, save_path):
     """
-
-    :param data_path:
-    :param save_path:
-    :return:
+    :param data_path: folder containing the audio files to be mixed
+    :param save_path: folder containing the final mixed audios
+    :return: creation of randomly mixed audio files
     """
     classes = os.listdir(data_path)
     music_files = os.listdir(os.path.join(data_path, classes[0]))
@@ -313,4 +319,4 @@ def create_manual_demo(data_path, save_path):
     return
 
 
-data_files('C:/Users/rds/Documents/GitHub/data_sgae/mixed', 2)
+data_files('D:/rds/GitHub/data_sgae/spectrograms_google')

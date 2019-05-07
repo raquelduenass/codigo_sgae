@@ -27,6 +27,13 @@ def show_metrics(real, predicted, soft):
 
 
 def show_detections(labels, separation, overlap):
+    """
+
+    :param labels:
+    :param separation:
+    :param overlap:
+    :return:
+    """
     music_pos, music_dur = counting(labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
@@ -139,11 +146,12 @@ def counting(data, label):
     return pos, length
 
 
-def join_labels(predicted, silence):
+def join_labels(predicted, silence, lengths=None):
     """
     Merge of the silence labels and the predicted ones from the CNN
     :param predicted: predictions from the CNN
     :param silence: silence detections
+    :param lengths:
     :return: silence: merge of the inputs
     """
     j = 0
@@ -152,22 +160,16 @@ def join_labels(predicted, silence):
             j = j+1
         silence[j] = predicted[i]
         j = j+1
-    return silence
 
-
-def separate_labels(predicted, lengths):
-    """
-
-    :param predicted:
-    :param lengths:
-    :return:
-    """
-    labels = [[]]*len(lengths)
-    for i in range(len(lengths)):
-        if i == 0:
-            labels[i] = predicted[0:lengths[i]]
-        else:
-            labels[i] = predicted[lengths[i-1]+1:lengths[i]]
+    if lengths is None:
+        labels = silence
+    else:
+        labels = [[]] * len(lengths)
+        for i in range(len(lengths)):
+            if i == 0:
+                labels[i] = predicted[0:lengths[i]]
+            else:
+                labels[i] = predicted[lengths[i - 1] + 1:lengths[i]]
     return labels
 
 

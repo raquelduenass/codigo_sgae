@@ -8,7 +8,6 @@ from keras.preprocessing.image import Iterator
 from keras.preprocessing.image import ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
-import time
 
 
 class DataGenerator(ImageDataGenerator):
@@ -94,17 +93,12 @@ class DirectoryIterator(Iterator):
         # Returns: The next batch of images and categorical labels.
         """
 
-        #startGlobal = time.time()
-
         # Initialize batches and indexes
         batch_x, batch_y_p = [], []
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            #startlocal = time.time()
             x = np.load(self.file_names[j])
-            #endlocal = time.time()
-            #print("Local time:{}".format(endlocal - startlocal))
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -119,17 +113,14 @@ class DirectoryIterator(Iterator):
             batch_y = batch_y_p
         batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
 
-        #endGlobal = time.time()
-        #print("Global time:{}".format(endGlobal - startGlobal))
-
         return batch_x, np.asarray(batch_y)
 
 
 def cross_val_create(path):
     """
 
-    :param path:
-    :return:
+    :param path: folder containing the data
+    :return: split of the data in train, validation and test sets
     """
     # File names, moments and labels of all samples in data.
     file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
@@ -159,14 +150,14 @@ def cross_val_create(path):
 def cross_val_load(dirs_file, labels_file, f_output):
     """
 
-    :param dirs_file:
-    :param labels_file:
-    :param f_output:
-    :return:
+    :param dirs_file: txt file containing the name of the samples
+    :param labels_file: txt file containing the labels of each sample
+    :param f_output: function of the last layer of the CNN ('sigmoid' or 'softmax')
+    :return dirs_list: samples names
+    :return labels_list: ground truth
     """
     dirs_list = utils.file_to_list(dirs_file)
     labels_list = utils.file_to_list(labels_file)
     labels_list = process_label.labels_to_number(labels_list, f_output)
     labels_list = [np.array(i) for i in labels_list]
-    # labels_list = [int(i) for i in labels_list]
-    return dirs_list, labels_list  # np.array(labels_list, dtype=k.floatx())
+    return dirs_list, labels_list
