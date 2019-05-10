@@ -20,24 +20,11 @@ def _main():
     # Set testing mode (dropout/batch normalization)
     k.set_learning_phase(TEST_PHASE)
     
-    # Output dimension
-    num_classes = 4
-    sr = 22050
-    separation = 2
-    power = 2
-    overlap = 0.5
-    wind_len = 9
-
     # Generate testing data
     test_data_gen = utils_demo.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
-    test_generator = test_data_gen.flow_from_directory(num_classes,
-                                                       power, sr,
-                                                       separation,
-                                                       overlap,
-                                                       shuffle=False,
-                                                       target_size=(FLAGS.img_height, FLAGS.img_width),
+    test_generator = test_data_gen.flow_from_directory(shuffle=False,
                                                        batch_size=FLAGS.batch_size)
 
     # Load json and create model
@@ -45,7 +32,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_5/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_6/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -67,12 +54,13 @@ def _main():
     predicted_labels = process_label.join_labels(classes, silence_labels, test_generator.files_length)
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real_labels = [[]] * len(test_generator.files_length)
+    probs = process_label.separate_labels(prob_per_class, test_generator.files_length)
     for j in range(len(test_generator.files_length)):
         real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
         real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
     # Class softening
-    soft_labels = process_label.soft_max(predicted_labels, wind_len, separation / overlap,
+    soft_labels = process_label.soft_max(predicted_labels, FLAGS.wind_len, FLAGS.separation / FLAGS.overlap,
                                          len(test_generator.files_length))
 
     # Save predicted and softened labels as a dictionary
@@ -85,7 +73,8 @@ def _main():
     for j in range(len(test_generator.files_length)):
         print('File: '+str(test_generator.file_names[j]))
         process_label.show_metrics(real_labels[j], predicted_labels[j], soft_labels[j])
-        process_label.show_detections(soft_labels[j], separation, overlap)
+        process_label.show_detections(soft_labels[j], FLAGS.separation, FLAGS.overlap)
+        process_label.visualize_output(soft_labels[j], FLAGS.separation, FLAGS.overlap, CLASSES, probs[j])
 
 
 def main(argv):

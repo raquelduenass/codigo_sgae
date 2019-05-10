@@ -26,7 +26,7 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
-def get_model_res_net(n, version, img_height, img_width, output_dim, weights_path, f_output):
+def get_model_res_net(n, version, img_height, img_width, output_dim, weights_path, f_output, structure):
     """
     Initialize model.
     # Arguments
@@ -44,14 +44,23 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
     input_shape = (img_height, img_width, 1)
     
     # Computed depth from supplied model parameter n
-    if version == 1:
-        depth = n * 6 + 2
-        model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth,
-                                         num_classes=output_dim, f_output=f_output)
+    if structure == 'simple':
+        if version == 1:
+            depth = n * 6 + 2
+            model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth,
+                                             num_classes=output_dim, f_output=f_output)
+        else:
+            depth = n * 9 + 2
+            model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth,
+                                             num_classes=output_dim, f_output=f_output)
     else:
-        depth = n * 9 + 2
-        model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth,
-                                         num_classes=output_dim, f_output=f_output)
+        if version == 1:
+            depth = n * 6 + 2
+        else:
+            depth = n * 9 + 2
+        model = cifar10_resnet.comb_resnet(input_shape=input_shape, depth=depth,
+                                           num_classes=output_dim, f_output=f_output,
+                                           version=version)
 
     # Model name, depth and version
     model_type = 'ResNet%dv%d' % (depth, version)
@@ -205,7 +214,7 @@ def _main():
 
     # Define model
     model = get_model_res_net(FLAGS.n, FLAGS.version, img_height, img_width,
-                              FLAGS.num_classes, weights_path, FLAGS.f_output)
+                              FLAGS.num_classes, weights_path, FLAGS.f_output, FLAGS.structure)
 
     # Serialize model into json
     json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)

@@ -1,9 +1,9 @@
 from __future__ import print_function
 import keras
 from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.layers import AveragePooling2D, Input, Flatten
+from keras.layers import AveragePooling2D, Input, Flatten, Concatenate
 from keras.regularizers import l2
-from keras.models import Model
+from keras.models import Model, Sequential
 from common_flags import FLAGS
 
 
@@ -72,6 +72,50 @@ def resnet_layer(inputs,
     return x
 
 
+def resnet_layer_comb(num_filters=16,
+                      kernel_size=3,
+                      strides=1,
+                      activation='relu',
+                      batch_normalization=True,
+                      conv_first=True):
+    """2D Convolution-Batch Normalization-Activation stack builder
+    # Arguments
+        inputs (tensor): input tensor from input image or previous layer
+        num_filters (int): Conv2D number of filters
+        kernel_size (int): Conv2D square kernel dimensions
+        strides (int): Conv2D square stride dimensions
+        activation (string): activation name
+        batch_normalization (bool): whether to include batch normalization
+        conv_first (bool): conv-bn-activation (True) or
+            activation-bn-conv (False)
+    # Returns
+        x (tensor): tensor as input to the next layer
+    """
+    branch = Sequential()
+    first = Conv2D(num_filters,
+                   kernel_size=kernel_size,
+                   strides=strides,
+                   padding='same',
+                   kernel_initializer='he_normal',
+                   kernel_regularizer=l2(1e-4))
+
+    branch.add(first)
+
+    if conv_first:
+        if batch_normalization:
+            branch.add(BatchNormalization())
+        if activation is not None:
+            branch.add(Activation(activation))
+    else:
+        if batch_normalization:
+            branch.add(BatchNormalization())
+        if activation is not None:
+            branch.add(Activation(activation))
+        branch.add(first)
+
+    return branch
+
+
 def resnet_v1(input_shape, depth, num_classes, f_output):
     """ResNet Version 1 Model builder [a]
     Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
@@ -102,39 +146,9 @@ def resnet_v1(input_shape, depth, num_classes, f_output):
 
     if (depth - 2) % 6 != 0:
         raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
-    # Start model definition.
-    num_filters = 16
-    num_res_blocks = int((depth - 2) / 6)
-
     inputs = Input(shape=input_shape)
-    x = resnet_layer(inputs=inputs)
-    # Instantiate the stack of residual units
-    for stack in range(3):
-        for res_block in range(num_res_blocks):
-            strides = 1
-            y = resnet_layer(inputs=x,
-                             num_filters=num_filters,
-                             strides=strides)
-            y = resnet_layer(inputs=y,
-                             num_filters=num_filters,
-                             activation=None)
-            if stack > 0 and res_block == 0:  # first layer but not first stack
-                # linear projection residual shortcut connection to match
-                # changed dims
-                x = resnet_layer(inputs=x,
-                                 num_filters=num_filters,
-                                 kernel_size=1,
-                                 strides=strides,
-                                 activation=None,
-                                 batch_normalization=False)
-            x = keras.layers.add([x, y])
-            x = Activation('relu')(x)
-        num_filters *= 2
+    y = base_resnet_v1(inputs, depth, True)
 
-    # Add classifier on top.
-    # v1 does not use BN after last shortcut connection-ReLU
-    x = AveragePooling2D(pool_size=8)(x)
-    y = Flatten()(x)
     outputs = Dense(num_classes,
                     activation=f_output,
                     kernel_initializer='he_normal')(y)
@@ -171,11 +185,58 @@ def resnet_v2(input_shape, depth, num_classes, f_output):
 
     if (depth - 2) % 9 != 0:
         raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
+    inputs = Input(shape=input_shape)
+    y, [] = base_resnet_v2(inputs, depth)
+    outputs = Dense(num_classes,
+                    activation=f_output,
+                    kernel_initializer='he_normal')(y)
+
+    # Instantiate model.
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
+
+def base_resnet_v1(inputs, depth):
+    # Start model definition.
+    num_filters = 16
+    num_res_blocks = int((depth - 2) / 6)
+
+    x = resnet_layer(inputs=inputs)
+    # Instantiate the stack of residual units
+    for stack in range(3):
+        for res_block in range(num_res_blocks):
+            strides = 1
+            y = resnet_layer(inputs=x,
+                             num_filters=num_filters,
+                             strides=strides)
+            y = resnet_layer(inputs=y,
+                             num_filters=num_filters,
+                             activation=None)
+            if stack > 0 and res_block == 0:  # first layer but not first stack
+                # linear projection residual shortcut connection to match
+                # changed dims
+                x = resnet_layer(inputs=x,
+                                 num_filters=num_filters,
+                                 kernel_size=1,
+                                 strides=strides,
+                                 activation=None,
+                                 batch_normalization=False)
+            x = keras.layers.add([x, y])
+            x = Activation('relu')(x)
+        num_filters *= 2
+
+    # Add classifier on top.
+    # v1 does not use BN after last shortcut connection-ReLU
+    x = AveragePooling2D(pool_size=8)(x)
+    y = Flatten()(x)
+    return y
+
+
+def base_resnet_v2(inputs, depth):
     # Start model definition.
     num_filters_in = 16
     num_res_blocks = int((depth - 2) / 9)
 
-    inputs = Input(shape=input_shape)
     # v2 performs Conv2D with BN-ReLU on input before splitting into 2 paths
     x = resnet_layer(inputs=inputs,
                      num_filters=num_filters_in,
@@ -229,10 +290,138 @@ def resnet_v2(input_shape, depth, num_classes, f_output):
     x = Activation('relu')(x)
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
+    model = Model(inputs=inputs, outputs=y)
+    return y, model
+
+
+def comb_resnet_v1(input_shape, depth, num_classes, f_output):
+    inputs = Input(shape=input_shape)
+    outputs = []
+    model = Model(inputs=inputs, outputs=outputs)
+
+    return model
+
+
+def comb_resnet_v2(input_shape, depth, num_classes, f_output):
+
+    if f_output == 'sigmoid':
+        num_classes = num_classes-1
+
+    if (depth - 2) % 9 != 0:
+        raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
+
+    y, inputs = [[]]*FLAGS.wind_len, [[]]*FLAGS.wind_len
+
+    # Start model definition.
+    num_filters_in = 16
+    num_res_blocks = int((depth - 2) / 9)
+    strides = 1
+
+    # Definition of layers
+    first_layer = resnet_layer_comb(num_filters=num_filters_in,
+                                    conv_first=True)
+    in_layer_1 = resnet_layer_comb(num_filters=num_filters_in,
+                                   kernel_size=1,
+                                   strides=strides,
+                                   activation='relu',
+                                   batch_normalization=True,
+                                   conv_first=False)
+    in_layer_1_stage0_res0 = resnet_layer_comb(num_filters=num_filters_in,
+                                               kernel_size=1,
+                                               strides=strides,
+                                               activation=None,
+                                               batch_normalization=False,
+                                               conv_first=False)
+    in_layer_2 = resnet_layer_comb(num_filters=num_filters_in,
+                                   conv_first=False)
+    in_layer_3 = resnet_layer_comb(num_filters=num_filters_in * 2,
+                                   kernel_size=1,
+                                   conv_first=False)
+    in_layer_3_stage0 = resnet_layer_comb(num_filters=num_filters_in * 4,
+                                          kernel_size=1,
+                                          conv_first=False)
+    in_layer_shortcut = resnet_layer_comb(num_filters=num_filters_in * 2,
+                                          kernel_size=1,
+                                          strides=strides,
+                                          activation=None,
+                                          batch_normalization=False)
+    in_layer_shortcut_stage0 = resnet_layer_comb(num_filters=num_filters_in * 4,
+                                                 kernel_size=1,
+                                                 strides=strides,
+                                                 activation=None,
+                                                 batch_normalization=False)
+
+    batch_end = BatchNormalization()
+    act_end = Activation('relu')
+    aver_end = AveragePooling2D(pool_size=8)
+    flat = Flatten()
+
+    for i in range(FLAGS.wind_len):
+        inputs[i] = Input(shape=input_shape)
+        branch = Sequential()
+        # y[i] = base_resnet_v2(inputs[i], depth)
+
+        # v2 performs Conv2D with BN-ReLU on input before splitting into 2 paths
+        branch.add(first_layer)
+
+        # Instantiate the stack of residual units
+        for stage in range(3):
+            for res_block in range(num_res_blocks):
+                if stage == 0:
+                    if res_block == 0:  # first layer and first stage
+                        branch.add(in_layer_1_stage0_res0)
+                    else:
+                        branch.add(in_layer_1)
+                    branch.add(in_layer_2)
+                    branch.add(in_layer_3_stage0)
+                    if res_block == 0:
+                        branch.add(in_layer_shortcut_stage0)
+                else:
+                    branch.add(in_layer_1)
+                    branch.add(in_layer_2)
+                    branch.add(in_layer_3)
+                    if res_block == 0:
+                        branch.add(in_layer_shortcut)
+
+                x = keras.layers.add([x, y])
+
+            num_filters_in = num_filters_out
+
+        # Add classifier on top.
+        # v2 has BN-ReLU before Pooling
+        branch.add(batch_end)
+        branch.add(act_end)
+        branch.add(aver_end)
+        branch.add(flat)
+
+
+    union = Concatenate()([y[0], y[1], y[2], y[3], y[4]])
     outputs = Dense(num_classes,
                     activation=f_output,
-                    kernel_initializer='he_normal')(y)
+                    kernel_initializer='he_normal')(union)
+    model = Model(inputs=inputs, outputs=outputs)
 
-    # Instantiate model.
+    return model
+
+
+def comb_resnet(input_shape, depth, num_classes, f_output, model):
+
+    inputs, features = [[]]*FLAGS.wind_len, [[]]*FLAGS.wind_len
+    for i in range(FLAGS.wind_len):
+        inputs[i] = Input(shape=input_shape)
+        if model == 1:
+            [], base_model = base_resnet_v1(inputs[i], depth)
+        elif model == 2:
+            [], base_model = base_resnet_v2(inputs[i], depth)
+        if i == 0:
+            weights = base_model.get_weights()
+        else:
+            base_model.set_weights(weights)
+        features[i] = base_model.output
+
+    union = Concatenate()([features[0], features[1], features[2], features[3], features[4]])
+    outputs = Dense(num_classes,
+                    activation=f_output,
+                    kernel_initializer='he_normal')(union)
     model = Model(inputs=inputs, outputs=outputs)
     return model

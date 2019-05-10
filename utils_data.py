@@ -98,7 +98,10 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = np.load(self.file_names[j])
+            if FLAGS.structure == 'simple':
+                x = np.load(self.file_names[j])
+            else:
+                x = load_many(self, j, FLAGS.wind_len)
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -161,3 +164,12 @@ def cross_val_load(dirs_file, labels_file, f_output):
     labels_list = process_label.labels_to_number(labels_list, f_output)
     labels_list = [np.array(i) for i in labels_list]
     return dirs_list, labels_list
+
+
+def load_many(self, j, wind_len):
+    a = np.arange(start=(1-wind_len)/2, stop=(wind_len-1)/2)
+    images = []
+    for i in a:
+        images.append(np.load(self.file_names[int(j+i)]))
+
+    return np.asarray(images)

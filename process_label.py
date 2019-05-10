@@ -1,5 +1,9 @@
 from sklearn import metrics
 from collections import Counter
+import numpy as np
+from matplotlib import pyplot as plt
+from keras.utils import to_categorical
+from sklearn import preprocessing
 
 
 def show_metrics(real, predicted, soft):
@@ -173,6 +177,16 @@ def join_labels(predicted, silence, lengths=None):
     return labels
 
 
+def separate_labels(labels, lengths):
+    labels_ret = [[]] * len(lengths)
+    for i in range(len(lengths)):
+        if i == 0:
+            labels_ret[i] = labels[0:lengths[i]]
+        else:
+            labels_ret[i] = labels[lengths[i - 1] + 1:lengths[i]]
+    return labels_ret
+
+
 def labels_to_number(labels, f_output):
     """
 
@@ -187,3 +201,32 @@ def labels_to_number(labels, f_output):
         dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
     numbers = list(map(dct.get, labels))
     return numbers
+
+
+def visualize_output(outputs, separation, overlap, labels, ground_truth):
+    if overlap == 0:
+        distance = separation
+        duration = len(outputs[0]) * separation
+    else:
+        distance = overlap / separation
+        duration = len(outputs[0]) * overlap / separation
+
+    plt.subplot(211)
+    t = np.arange(0.0, duration, distance)
+    for i in range(len(outputs)):
+        plt.plot(t, outputs[i], label=labels[i])
+    plt.title('CNN output')
+
+    le = preprocessing.LabelEncoder()
+    ground_truth = le.fit_transform(ground_truth)
+    encoded = to_categorical(ground_truth)
+    ground_truth = list(encoded.T)
+
+    plt.subplot(212)
+    for i in range(len(ground_truth)):
+        plt.plot(t, ground_truth[i], label=labels[i])
+    plt.title('Ground truth')
+    plt.subplots_adjust(top=0.92, bottom=0.08, hspace=0.5)
+    plt.show()
+
+    return

@@ -77,7 +77,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_5/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_6/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -85,7 +85,7 @@ def _main():
         print("Impossible to find weight path. Returning untrained model")
 
     # Compile model
-    model.compile(loss='categorical_crossentropy', optimizer='adam')
+    model.compile(loss='categorical_crossentropy', optimizer='adam')  # categorical_crossentropy
 
     # Get predictions and ground truth
     n_samples = test_generator.samples

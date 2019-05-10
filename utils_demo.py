@@ -17,12 +17,10 @@ class DataGenerator(ImageDataGenerator):
     unchanged.
     """
 
-    def flow_from_directory(self, num_classes, power, sr, separation, overlap, target_size=(224, 224, 3),
-                            batch_size=32, shuffle=False,
+    def flow_from_directory(self, batch_size=32, shuffle=False,
                             seed=None, follow_links=False):
-        return DirectoryIterator(num_classes, power, sr, separation, overlap, self, target_size=target_size,
-                                 batch_size=batch_size, shuffle=shuffle, seed=seed,
-                                 follow_links=follow_links)
+        return DirectoryIterator(self, batch_size=batch_size, shuffle=shuffle,
+                                 seed=seed, follow_links=follow_links)
 
 
 class DirectoryIterator(Iterator):
@@ -40,19 +38,12 @@ class DirectoryIterator(Iterator):
        follow_links: Bool, whether to follow symbolic links or not
 
     """
-    def __init__(self, num_classes, power, sr, separation, overlap, image_data_generator,
-                 target_size=(224, 224, 3), batch_size=32, shuffle=False, seed=None,
+    def __init__(self, image_data_generator, batch_size=32, shuffle=False, seed=None,
                  follow_links=False):
         
         self.image_data_generator = image_data_generator
-        self.target_size = target_size
         self.follow_links = follow_links
-        self.power = power
-        self.num_classes = num_classes
         self.samples = 0
-        self.sr = sr
-        self.separation = separation
-        self.overlap = overlap
 
         # File of database for the phase
         self.file_names = utils.file_to_list(os.path.join(FLAGS.demo_path, 'data.txt'))
@@ -65,21 +56,21 @@ class DirectoryIterator(Iterator):
         self.files_length = []
         for i in range(len(self.file_names)):
             audio, sr_old = librosa.load(self.file_names[i])
-            audio = librosa.resample(audio, sr_old, self.sr)
+            audio = librosa.resample(audio, sr_old, FLAGS.sr)
             if i == 0:
                 self.files_length.append(int((librosa.get_duration(audio) -
-                                              self.separation) // self.overlap))
+                                              FLAGS.separation) // FLAGS.overlap))
             else:
                 self.files_length.append(int(self.files_length[i-1]) +
                                          int((librosa.get_duration(audio) -
-                                              self.separation) // self.overlap))
+                                              FLAGS.separation) // FLAGS.overlap))
         self.samples = self.files_length[len(self.files_length)-1]
         
         # Silence labels
         self.silence_labels = [[]]*self.samples
 
         print('Found {} images belonging to {} classes.'.format(
-                self.samples, self.num_classes))
+                self.samples, FLAGS.num_classes))
 
         super(DirectoryIterator, self).__init__(self.samples, batch_size, shuffle, seed)
 
@@ -109,8 +100,8 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = process_audio.compute_mel_gram(self.separation, self.sr,
-                                               self.power, segments[i])
+            x = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr,
+                                               FLAGS.power, segments[i])
             if process_audio.silence_detection(x):
                 self.silence_labels[j] = 'S'
             else:

@@ -1,5 +1,6 @@
 import librosa
 import numpy as np
+from common_flags import FLAGS
 
 
 def fade_in_out(segment, sr_music):
@@ -48,36 +49,36 @@ def separate_many_audio(self, index_array):
     offset = index_array[0]
     if not (actual_file == 0):
         offset = offset - self.files_length[actual_file - 1]
-    if not (self.overlap == 0):
-        offset = offset * self.overlap
-        duration = (self.batch_size - 1) * self.overlap + self.separation
+    if not (FLAGS.overlap == 0):
+        offset = offset * FLAGS.overlap
+        duration = (self.batch_size - 1) * FLAGS.overlap + FLAGS.separation
     else:
-        offset = offset * self.separation
-        duration = self.batch_size * self.separation
+        offset = offset * FLAGS.separation
+        duration = self.batch_size * FLAGS.separation
 
     # Load and re-sample audio segment
     audio, sr_old = librosa.load(self.file_names[actual_file],
                                  offset=offset, duration=duration)
-    audio = librosa.resample(audio, sr_old, self.sr)
+    audio = librosa.resample(audio, sr_old, FLAGS.sr)
     real_duration = librosa.get_duration(audio)
 
     minus = 0
     for j in range(len(index_array)):
-        if self.overlap == 0:  # No overlapping
-            segments.append(audio[j * self.separation * self.sr:
-                                  (j + 1) * self.separation * self.sr])
+        if FLAGS.overlap == 0:  # No overlapping
+            segments.append(audio[j * FLAGS.separation * FLAGS.sr:
+                                  (j + 1) * FLAGS.separation * FLAGS.sr])
         else:
-            if (j - minus) * self.overlap + self.separation <= real_duration:
-                segments.append(audio[int((j - minus) * self.overlap * self.sr):
-                                      int(((j - minus) * self.overlap + self.separation) * self.sr)])
+            if (j - minus) * FLAGS.overlap + FLAGS.separation <= real_duration:
+                segments.append(audio[int((j - minus) * FLAGS.overlap * FLAGS.sr):
+                                      int(((j - minus) * FLAGS.overlap + FLAGS.separation) * FLAGS.sr)])
             else:  # Change of audio file
                 minus = j
                 actual_file = actual_file + 1
                 audio, sr_old = librosa.load(self.file_names[actual_file],
-                                             duration=(self.batch_size - j) * self.overlap + self.separation)
-                audio = librosa.resample(audio, sr_old, self.sr)
+                                             duration=(self.batch_size - j) * FLAGS.overlap + FLAGS.separation)
+                audio = librosa.resample(audio, sr_old, FLAGS.sr)
                 real_duration = librosa.get_duration(audio)
-                segments.append(audio[0:int(self.separation * self.sr)])
+                segments.append(audio[0:int(FLAGS.separation * FLAGS.sr)])
 
     return segments
 
