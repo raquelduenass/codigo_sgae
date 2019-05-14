@@ -77,6 +77,22 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
     return model
 
 
+def many_generator(generator):
+    while True:
+        first, second, third, forth, fifth = [], [], [], [], []
+        x = generator.next()
+        for i in range(FLAGS.batch_size):
+            first.append(x[0][i][0])
+            second.append(x[0][i][1])
+            third.append(x[0][i][2])
+            forth.append(x[0][i][3])
+            fifth.append(x[0][i][4])
+        # Yield both images and their mutual label
+        a = x[0][:][0]
+        yield [np.asarray(first), np.asarray(second), np.asarray(third),
+               np.asarray(forth), np.asarray(fifth)], x[1]
+
+
 def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     """
     Model training.
@@ -115,16 +131,26 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     str_time = strftime("%Y%b%d_%Hh%Mm%Ss", localtime(time()))
     tensor_board = TensorBoard(log_dir="logs/{}".format(str_time), histogram_freq=0)
     callbacks = [write_best_model, save_model_and_loss, lr_reducer, lr_scheduler, tensor_board]
-
-    model.fit_generator(train_data_generator,
-                        epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
-                        callbacks=callbacks,
-                        validation_data=val_data_generator,
-                        validation_steps=validation_steps,
-                        initial_epoch=initial_epoch,
-                        max_queue_size=10,
-                        workers=2,
-                        use_multiprocessing=False)
+    if FLAGS.structure == 'complex':
+        model.fit_generator(many_generator(train_data_generator),
+                            epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
+                            callbacks=callbacks,
+                            validation_data=many_generator(val_data_generator),
+                            validation_steps=validation_steps,
+                            initial_epoch=initial_epoch,
+                            max_queue_size=10,
+                            workers=1,
+                            use_multiprocessing=False)
+    else:
+        model.fit_generator(train_data_generator,
+                            epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
+                            callbacks=callbacks,
+                            validation_data=val_data_generator,
+                            validation_steps=validation_steps,
+                            initial_epoch=initial_epoch,
+                            max_queue_size=10,
+                            workers=2,
+                            use_multiprocessing=False)
 
 
 def _main():

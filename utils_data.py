@@ -94,17 +94,18 @@ class DirectoryIterator(Iterator):
         """
 
         # Initialize batches and indexes
-        batch_x, batch_y_p = [], []
+        batch_x, batch_y_p, batch_x_wind = [], [], [[]]*FLAGS.wind_len
         
         # Build batch of image data
         for i, j in enumerate(index_array):
             if FLAGS.structure == 'simple':
                 x = np.load(self.file_names[j])
+                # Data augmentation
+                x = self.image_data_generator.standardize(x)
+                x = self.image_data_generator.random_transform(x)
             else:
                 x = load_many(self, j, FLAGS.wind_len)
-            # Data augmentation
-            x = self.image_data_generator.random_transform(x)
-            x = self.image_data_generator.standardize(x)
+
             batch_x.append(x)
             batch_y_p.append(self.ground_truth[j])
 
@@ -114,7 +115,17 @@ class DirectoryIterator(Iterator):
             batch_y = keras.utils.to_categorical(batch_y, num_classes=FLAGS.num_classes)
         else:
             batch_y = batch_y_p
-        batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
+
+        for i in range(FLAGS.wind_len):
+            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                               for j in range(FLAGS.batch_size)]
+
+        # batch_x = np.array(batch_x)
+        batch_x = np.expand_dims(np.array(batch_x), axis=4)
+
+        for i in range(len(index_array)):
+            batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
+                          batch_x_wind[3][i], batch_x_wind[4][i]]
 
         return batch_x, np.asarray(batch_y)
 
@@ -167,9 +178,14 @@ def cross_val_load(dirs_file, labels_file, f_output):
 
 
 def load_many(self, j, wind_len):
-    a = np.arange(start=(1-wind_len)/2, stop=(wind_len-1)/2)
+    a = np.arange(start=(1-wind_len)/2, stop=(wind_len-1)/2+1)
     images = []
     for i in a:
-        images.append(np.load(self.file_names[int(j+i)]))
+        x = np.load(self.file_names[int(j+i)])
+        # Data augmentation
+        x = self.image_data_generator.standardize(x)
+        x = self.image_data_generator.random_transform(x)
+        images.append(x)
+    # block = np.array(images)
 
-    return np.asarray(images)
+    return images

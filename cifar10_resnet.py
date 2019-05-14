@@ -291,7 +291,7 @@ def base_resnet_v2(inputs, depth):
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
     model = Model(inputs=inputs, outputs=y)
-    return y, model
+    return model
 
 
 def comb_resnet_v1(input_shape, depth, num_classes, f_output):
@@ -404,22 +404,28 @@ def comb_resnet_v2(input_shape, depth, num_classes, f_output):
     return model
 
 
-def comb_resnet(input_shape, depth, num_classes, f_output, model):
+def comb_resnet(input_shape, depth, num_classes, f_output, version):
 
     inputs, features = [[]]*FLAGS.wind_len, [[]]*FLAGS.wind_len
+
+    if f_output == 'sigmoid':
+        num_classes = num_classes - 1
+        
     for i in range(FLAGS.wind_len):
         inputs[i] = Input(shape=input_shape)
-        if model == 1:
+        if version == 1:
             [], base_model = base_resnet_v1(inputs[i], depth)
-        elif model == 2:
-            [], base_model = base_resnet_v2(inputs[i], depth)
+        elif version == 2:
+            base_model = base_resnet_v2(inputs[i], depth)
         if i == 0:
             weights = base_model.get_weights()
+            branches = [base_model]*FLAGS.wind_len
         else:
-            base_model.set_weights(weights)
-        features[i] = base_model.output
+            branches[i].set_weights(weights)
+        features[i] = branches[i].output
 
-    union = Concatenate()([features[0], features[1], features[2], features[3], features[4]])
+    union = Concatenate()(features)
+
     outputs = Dense(num_classes,
                     activation=f_output,
                     kernel_initializer='he_normal')(union)
