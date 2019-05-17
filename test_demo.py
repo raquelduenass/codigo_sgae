@@ -28,7 +28,7 @@ def _main():
                                                        batch_size=FLAGS.batch_size)
 
     # Load json and create model
-    json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
+    json_model_path = os.path.join(FLAGS.experiment_root_directory, FLAGS.json_model_filename)
     model = utils.json_to_model(json_model_path)
 
     # Load weights
@@ -49,24 +49,27 @@ def _main():
             model, test_generator, nb_batches, verbose=1)
     
     # Predicted labels
-    silence_labels = test_generator.silence_labels
     classes = [CLASSES[i] for i in np.argmax(prob_per_class, axis=-1)]
-    predicted_labels = process_label.join_labels(classes, silence_labels, test_generator.files_length)
+    predicted_labels = process_label.join_labels(classes, test_generator.silence_labels,
+                                                 test_generator.files_length)
+    probabilities = process_label.separate_labels(prob_per_class, test_generator.files_length)
+
+    # Real labels
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real_labels = [[]] * len(test_generator.files_length)
-    probs = process_label.separate_labels(prob_per_class, test_generator.files_length)
     for j in range(len(test_generator.files_length)):
         real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
         real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
     # Class softening
-    soft_labels = process_label.soft_max(predicted_labels, FLAGS.wind_len, FLAGS.separation / FLAGS.overlap,
+    soft_labels = process_label.soft_max(predicted_labels, FLAGS.wind_len,
+                                         FLAGS.separation / FLAGS.overlap,
                                          len(test_generator.files_length))
 
     # Save predicted and softened labels as a dictionary
     labels_dict = {'predicted_labels': predicted_labels,
                    'soft_labels': soft_labels}
-    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
+    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'demo_predicted_and_soft_labels.json'))
 
     # Metrics and boundaries of music
@@ -74,7 +77,7 @@ def _main():
         print('File: '+str(test_generator.file_names[j]))
         process_label.show_metrics(real_labels[j], predicted_labels[j], soft_labels[j])
         process_label.show_detections(soft_labels[j], FLAGS.separation, FLAGS.overlap)
-        process_label.visualize_output(soft_labels[j], FLAGS.separation, FLAGS.overlap, CLASSES, probs[j])
+        process_label.visualize_output(soft_labels[j], FLAGS.separation, FLAGS.overlap, CLASSES, probabilities[j])
 
 
 def main(argv):

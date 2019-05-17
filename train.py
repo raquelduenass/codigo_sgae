@@ -47,20 +47,20 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
     if structure == 'simple':
         if version == 1:
             depth = n * 6 + 2
-            model = cifar10_resnet.resnet_v1(input_shape=input_shape, depth=depth,
-                                             num_classes=output_dim, f_output=f_output)
+            model = cifar10_resnet.res_net_v1(input_shape=input_shape, depth=depth,
+                                              num_classes=output_dim, f_output=f_output)
         else:
             depth = n * 9 + 2
-            model = cifar10_resnet.resnet_v2(input_shape=input_shape, depth=depth,
-                                             num_classes=output_dim, f_output=f_output)
+            model = cifar10_resnet.res_net_v2(input_shape=input_shape, depth=depth,
+                                              num_classes=output_dim, f_output=f_output)
     else:
         if version == 1:
             depth = n * 6 + 2
         else:
             depth = n * 9 + 2
-        model = cifar10_resnet.comb_resnet(input_shape=input_shape, depth=depth,
-                                           num_classes=output_dim, f_output=f_output,
-                                           version=version)
+        model = cifar10_resnet.comb_res_net_unique(input_shape=input_shape, depth=depth,
+                                                   num_classes=output_dim, f_output=f_output,
+                                                   version=version)
 
     # Model name, depth and version
     model_type = 'ResNet%dv%d' % (depth, version)
@@ -108,13 +108,13 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                   metrics=['mse'])
 
     # Save model with the lowest validation loss
-    weights_path = os.path.join(FLAGS.experiment_rootdir, 'weights_{epoch:03d}.h5')
+    weights_path = os.path.join(FLAGS.experiment_root_directory, 'weights_{epoch:03d}.h5')
     write_best_model = ModelCheckpoint(filepath=weights_path, monitor='val_loss',
                                        save_best_only=True, save_weights_only=True)
 
     # Save training and validation losses.
-    logz.configure_output_dir(FLAGS.experiment_rootdir)
-    save_model_and_loss = log_utils.MyCallback(filepath=FLAGS.experiment_rootdir)
+    logz.configure_output_dir(FLAGS.experiment_root_directory)
+    save_model_and_loss = log_utils.MyCallback(filepath=FLAGS.experiment_root_directory)
 
     # Train model
     steps_per_epoch = int(np.ceil(train_data_generator.samples / FLAGS.batch_size))
@@ -138,7 +138,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_data=many_generator(val_data_generator),
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
-                            max_queue_size=10,
+                            max_queue_size=30,
                             workers=1,
                             use_multiprocessing=False)
     else:
@@ -168,8 +168,8 @@ def _main():
 
     # Create the experiment root dir if not already there:
     # create a model if the name of the one in the parameters doesn't exist
-    if not os.path.exists(FLAGS.experiment_rootdir):
-        os.makedirs(FLAGS.experiment_rootdir)
+    if not os.path.exists(FLAGS.experiment_root_directory):
+        os.makedirs(FLAGS.experiment_root_directory)
         
     # Split the data into training, validation and test sets
     if FLAGS.initial_epoch == 0:
@@ -242,15 +242,19 @@ def _main():
     model = get_model_res_net(FLAGS.n, FLAGS.version, img_height, img_width,
                               FLAGS.num_classes, weights_path, FLAGS.f_output, FLAGS.structure)
 
+    rama1 = model(input1)
+    rama2 = model(input2)
+    comb = contatenate(output1, ouput2)
+
     # Serialize model into json
-    json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
+    json_model_path = os.path.join(FLAGS.experiment_root_directory, FLAGS.json_model_filename)
     utils.model_to_json(model, json_model_path)
 
     # Train model
     train_model(train_generator, val_generator, model, initial_epoch)
     
     # Plot training and validation losses
-    utils.plot_loss(FLAGS.experiment_rootdir)
+    utils.plot_loss(FLAGS.experiment_root_directory)
 
 
 def main(argv):

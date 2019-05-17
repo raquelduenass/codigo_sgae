@@ -1,11 +1,11 @@
 import gflags
-import numpy as np
 import os
 import sys
-from sklearn import metrics
-from keras import backend as k
 import utils
 import utils_data
+import numpy as np
+from sklearn import metrics
+from keras import backend as k
 from common_flags import FLAGS 
 
 # Constants
@@ -16,7 +16,7 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
-def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
+def compute_highest_classification_errors(predicted_probabilities, real_labels, n_errors=20):
     """
     Compute the 'n_errors' highest errors predicted by the network
 
@@ -28,13 +28,13 @@ def compute_highest_classification_errors(pred_probs, real_labels, n_errors=20):
     # Returns
        highest_errors: Indexes of the samples with highest errors.
     """
-    assert np.all(pred_probs.shape == real_labels.shape)
-    dist = abs(pred_probs - 1)
+    assert np.all(predicted_probabilities.shape == real_labels.shape)
+    dist = abs(predicted_probabilities - 1)
     highest_errors = dist.argsort()[-n_errors:][::-1]
     return highest_errors
 
 
-def evaluate_classification(pred_probs, pred_labels, real_labels):
+def evaluate_classification(predicted_probabilities, predicted_labels, real_labels):
     """
     Evaluate some classification metrics. Compute average accuracy and highest
     errors.
@@ -46,11 +46,12 @@ def evaluate_classification(pred_probs, pred_labels, real_labels):
        dictionary: dictionary containing the evaluated classification metrics
     """
     # Compute average accuracy
-    ave_accuracy = metrics.accuracy_score(real_labels, pred_labels)
+    ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
     print('Average accuracy = ', ave_accuracy)
     
     # Compute highest errors
-    highest_errors = compute_highest_classification_errors(pred_probs, real_labels, n_errors=20)
+    highest_errors = compute_highest_classification_errors(predicted_probabilities, real_labels,
+                                                           n_errors=20)
     
     # Return accuracy and highest errors in a dictionary
     dictionary = {"ave_accuracy": ave_accuracy,
@@ -73,7 +74,7 @@ def _main():
                                                        batch_size=FLAGS.batch_size)
     
     # Load json and create model
-    json_model_path = os.path.join(FLAGS.experiment_rootdir, FLAGS.json_model_fname)
+    json_model_path = os.path.join(FLAGS.experiment_root_directory, FLAGS.json_model_filename)
     model = utils.json_to_model(json_model_path)
 
     # Load weights
@@ -90,34 +91,34 @@ def _main():
     # Get predictions and ground truth
     n_samples = test_generator.samples
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
-    probs_per_class, ground_truth = utils.compute_predictions_and_gt(
+    probabilities_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose=1)
     
     # Predicted probabilities
-    pred_probs = np.max(probs_per_class, axis=-1)
+    predicted_probabilities = np.max(probabilities_per_class, axis=-1)
     # Predicted labels
-    pred_labels = np.argmax(probs_per_class, axis=-1)
+    predicted_labels = np.argmax(probabilities_per_class, axis=-1)
     # Real labels (ground truth)
     real_labels = np.argmax(ground_truth, axis=-1)
     
     # Evaluate predictions: Average accuracy and highest errors
     print("-----------------------------------------------")
     print("Evaluation:")
-    evaluation = evaluate_classification(pred_probs, pred_labels, real_labels)
+    evaluation = evaluate_classification(predicted_probabilities, predicted_labels, real_labels)
     print("-----------------------------------------------")
     
     # Save evaluation
-    utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_rootdir, 'test_results.json'))
+    utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
 
-    # Save predicted and real steerings as a dictionary
-    labels_dict = {'pred_labels': pred_labels.tolist(),
+    # Save predicted and real labels as a dictionary
+    labels_dict = {'predicted_labels': predicted_labels.tolist(),
                    'real_labels': real_labels.tolist()}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
                                                   'predicted_and_real_labels.json'))
                                                
     # Visualize confusion matrix                                           
     utils.plot_confusion_matrix('test', FLAGS.experiment_rootdir, real_labels,
-                                pred_labels, CLASSES, normalize=True)
+                                predicted_labels, CLASSES, normalize=True)
 
 
 def main(argv):

@@ -51,14 +51,14 @@ class DirectoryIterator(Iterator):
 
         # File of database for the phase
         if directory == 'train':
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'train_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'train_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt')
         elif directory == 'val':
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'val_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'val_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt')
         else:
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
         
         self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file,
                                                             FLAGS.f_output)
@@ -93,7 +93,7 @@ class DirectoryIterator(Iterator):
         # Returns: The next batch of images and categorical labels.
         """
 
-        # Initialize batches and indexes
+        # Initialize batches
         batch_x, batch_y_p, batch_x_wind = [], [], [[]]*FLAGS.wind_len
         
         # Build batch of image data
@@ -147,17 +147,17 @@ def cross_val_create(path):
     
     # Create files of directories, labels and moments
     utils.list_to_file([file_names[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_rootdir, 'train_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'train_files.txt'))
     utils.list_to_file([file_names[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_rootdir, 'val_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'val_files.txt'))
     utils.list_to_file([file_names[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_rootdir, 'test_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'test_files.txt'))
     utils.list_to_file([labels[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt'))
     utils.list_to_file([labels[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt'))
     utils.list_to_file([labels[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt'))
     return
 
 
@@ -178,14 +178,23 @@ def cross_val_load(dirs_file, labels_file, f_output):
 
 
 def load_many(self, j, wind_len):
+    """
+
+    :param self:
+    :param j:
+    :param wind_len:
+    :return images:
+    """
     a = np.arange(start=(1-wind_len)/2, stop=(wind_len-1)/2+1)
     images = []
     for i in a:
-        x = np.load(self.file_names[int(j+i)])
+        if j+i < len(self.file_names):
+            x = np.load(self.file_names[int(j+i)])
+        else:
+            x = np.load(self.file_names[int(i)])
         # Data augmentation
         x = self.image_data_generator.standardize(x)
         x = self.image_data_generator.random_transform(x)
         images.append(x)
-    # block = np.array(images)
 
     return images

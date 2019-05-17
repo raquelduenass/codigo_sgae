@@ -53,17 +53,17 @@ class DirectoryIterator(Iterator):
 
         # File of database for the phase
         if directory == 'train':
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'train_files.txt')
-            moments_file = os.path.join(FLAGS.experiment_rootdir, 'train_moments.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'train_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt')
         elif directory == 'val':
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'val_files.txt')
-            moments_file = os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'val_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt')
         else:
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
-            moments_file = os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt')
-            labels_file = os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'test_files.txt')
+            moments_file = os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
         
         self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, moments_file, labels_file)
         
@@ -138,23 +138,23 @@ def cross_val_create(path):
     
     # Create files of directories, labels and moments
     utils.list_to_file([file_names[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_rootdir, 'train_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'train_files.txt'))
     utils.list_to_file([file_names[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_rootdir, 'val_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'val_files.txt'))
     utils.list_to_file([file_names[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_rootdir, 'test_files.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'test_files.txt'))
     utils.list_to_file([moments[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_rootdir, 'train_moments.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
     utils.list_to_file([moments[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_rootdir, 'val_moments.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
     utils.list_to_file([moments[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_rootdir, 'test_moments.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
     utils.list_to_file([labels[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_rootdir, 'train_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt'))
     utils.list_to_file([labels[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_rootdir, 'val_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt'))
     utils.list_to_file([labels[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_rootdir, 'test_labels.txt'))
+                       os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt'))
     return
 
 
