@@ -152,10 +152,12 @@ def res_net_v2(input_shape, depth, num_classes, f_output):
     return model
 
 
-def base_res_net_v1(inputs, depth):
+def base_res_net_v1(input_shape, depth):
     # Start model definition.
     num_filters = 16
     num_res_blocks = int((depth - 2) / 6)
+
+    inputs = Input(input_shape)
 
     x = res_net_layer(inputs=inputs)
     # Instantiate the stack of residual units
@@ -188,7 +190,7 @@ def base_res_net_v1(inputs, depth):
     return model
 
 
-def base_res_net_v2(input_shape, depth, shared_layers):
+def base_res_net_v2(input_shape, depth):
     # Start model definition.
     num_filters_in = 16
     num_filters_out = 0
@@ -244,344 +246,34 @@ def base_res_net_v2(input_shape, depth, shared_layers):
 
     # Add classifier on top.
     # v2 has BN-ReLU before Pooling
-    x = shared_layers['batch'](x)
-    x = shared_layers['act'](x)
-    x = shared_layers['pool'](x)
-    y = shared_layers['flat'](x)
-    return inputs, y
-
-
-def comb_res_net(input_shape, depth, num_classes, f_output, version):
-
-    inputs, features = [[]]*FLAGS.wind_len, [[]]*FLAGS.wind_len
-
-    if f_output == 'sigmoid':
-        num_classes = num_classes - 1
-    alpha = base_res_net_v1(input_shape, depth)
-
-    for i in range(FLAGS.wind_len):
-        alpha()
-
-    parallel = Model(inputs=inputs, outputs=features)
-
-    union = Concatenate()(parallel.output)
-
-    outputs = Dense(num_classes,
-                    activation=f_output,
-                    kernel_initializer='he_normal')(union)
-    model = Model(inputs=inputs, outputs=outputs)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = AveragePooling2D(pool_size=8)(x)
+    y = Flatten()(x)
+    model = Model(inputs=inputs, outputs=y)
     return model
-
-
-def res_net_layer_unique(inputs, layers, convolution_first, batch, activation):
-
-    convolution = layers['conv']
-
-    x = inputs
-    if convolution_first:
-        x = convolution(x)
-        if batch:
-            x = layers['batch'](x)
-        if activation is not None:
-            x = layers['act'](x)
-    else:
-        if batch:
-            x = layers['batch'](x)
-        if activation is not None:
-            x = layers['act'](x)
-        x = convolution(x)
-
-    return x
 
 
 def comb_res_net_unique(input_shape, depth, num_classes, f_output, version):
     inputs, features = [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
 
-    num_res_blocks = int((depth - 2) / 9)
-    shared_layers = init_shared_layers(num_res_blocks)
-
     if f_output == 'sigmoid':
         num_classes = num_classes - 1
 
+    # Reuse model
+    if version == 1:
+        base_model = base_res_net_v1(input_shape, depth)
+    elif version == 2:
+        base_model = base_res_net_v2(input_shape, depth)
+
     for i in range(FLAGS.wind_len):
-        # if version == 1:
-        # inputs[i], features[i] = base_res_net_unique_v1(input_shape, depth, shared_layers)
-        # elif version == 2:
-            inputs[i], features[i] = base_res_net_unique_v2(input_shape, depth, shared_layers)
+        inputs[i] = Input(input_shape)
+        features[i] = base_model(inputs[i])
 
-    parallel = Model(inputs=inputs, outputs=features)
-
-    union = Concatenate()(parallel.output)
+    union = Concatenate()(features)
 
     outputs = Dense(num_classes,
                     activation=f_output,
                     kernel_initializer='he_normal')(union)
     model = Model(inputs=inputs, outputs=outputs)
     return model
-
-
-def base_res_net_unique_v2(input_shape, depth, shared_layers):
-    # Start model definition.
-    num_res_blocks = int((depth - 2) / 9)
-
-    inputs = Input(shape=input_shape)
-
-    # v2 performs Convolution 2D with BN-ReLU on input before splitting into 2 paths
-    x = res_net_layer_unique(inputs=inputs, layers=shared_layers['before'],
-                             batch=True, activation='relu', convolution_first=True)
-
-    # Stage 0
-    y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_0']['block_0']['y1'],
-                             batch=False, activation=None, convolution_first=False)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_0']['block_0']['y2'],
-                             batch=False, activation=None, convolution_first=True)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_0']['block_0']['y3'],
-                             batch=False, activation=None, convolution_first=True)
-    x = res_net_layer_unique(inputs=x, layers=shared_layers['stage_0']['block_0']['x1'],
-                             batch=False, activation=None, convolution_first=True)
-    x = keras.layers.add([x, y])
-
-    for res_block in range(num_res_blocks):
-        y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_0']['block_n'][res_block]['y1'],
-                                 batch=True, activation='relu', convolution_first=False)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_0']['block_n'][res_block]['y2'],
-                                 batch=False, activation=None, convolution_first=True)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_0']['block_n'][res_block]['y3'],
-                                 batch=False, activation=None, convolution_first=True)
-        x = keras.layers.add([x, y])
-
-    # Stage 1
-    y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_1']['block_0']['y1'],
-                             batch=True, activation='relu', convolution_first=False)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_1']['block_0']['y2'],
-                             batch=False, activation=None, convolution_first=True)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_1']['block_0']['y3'],
-                             batch=False, activation=None, convolution_first=True)
-    x = res_net_layer_unique(inputs=x, layers=shared_layers['stage_1']['block_0']['x1'],
-                             batch=False, activation=None, convolution_first=True)
-    x = keras.layers.add([x, y])
-
-    for res_block in range(num_res_blocks):
-        y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_1']['block_n'][res_block]['y1'],
-                                 batch=True, activation='relu', convolution_first=False)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_1']['block_n'][res_block]['y2'],
-                                 batch=False, activation=None, convolution_first=True)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_1']['block_n'][res_block]['y3'],
-                                 batch=False, activation=None, convolution_first=True)
-        x = keras.layers.add([x, y])
-
-    # Stage 2
-    y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_2']['block_0']['y1'],
-                             batch=True, activation='relu', convolution_first=False)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_2']['block_0']['y2'],
-                             batch=False, activation=None, convolution_first=True)
-    y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_2']['block_0']['y3'],
-                             batch=False, activation=None, convolution_first=True)
-    x = res_net_layer_unique(inputs=x, layers=shared_layers['stage_2']['block_0']['x1'],
-                             batch=False, activation=None, convolution_first=True)
-    x = keras.layers.add([x, y])
-
-    for res_block in range(num_res_blocks):
-        y = res_net_layer_unique(inputs=x, layers=shared_layers['stage_2']['block_n'][res_block]['y1'],
-                                 batch=True, activation='relu', convolution_first=False)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_2']['block_n'][res_block]['y2'],
-                                 batch=False, activation=None, convolution_first=True)
-        y = res_net_layer_unique(inputs=y, layers=shared_layers['stage_2']['block_n'][res_block]['y3'],
-                                 batch=False, activation=None, convolution_first=True)
-        x = keras.layers.add([x, y])
-
-    # Add classifier on top.
-    # v2 has BN-ReLU before Pooling
-    x = shared_layers['end']['batch'](x)
-    x = shared_layers['end']['act'](x)
-    x = shared_layers['end']['pool'](x)
-    y = shared_layers['end']['flat'](x)
-    return inputs, y
-
-
-def init_shared_layers(num_res_blocks):
-    stage_0_block_n =[[]]*num_res_blocks
-    stage_1_block_n = [[]]*num_res_blocks
-    stage_2_block_n = [[]]*num_res_blocks
-    for i in range(num_res_blocks):
-        stage_0_block_n[i] = {'y1': {'conv': Conv2D(16,
-                                                    kernel_size=1,
-                                                    strides=1,
-                                                    padding='same',
-                                                    kernel_initializer='he_normal',
-                                                    kernel_regularizer=l2(1e-4)),
-                                     'batch': BatchNormalization(),
-                                     'act': Activation('relu')},
-                              'y2': {'conv': Conv2D(16,
-                                                    kernel_size=3,
-                                                    strides=1,
-                                                    padding='same',
-                                                    kernel_initializer='he_normal',
-                                                    kernel_regularizer=l2(1e-4)),
-                                     'batch': BatchNormalization(),
-                                     'act': Activation('relu')},
-                              'y3': {'conv': Conv2D(64,
-                                                    kernel_size=1,
-                                                    strides=1,
-                                                    padding='same',
-                                                    kernel_initializer='he_normal',
-                                                    kernel_regularizer=l2(1e-4)),
-                                     'batch': BatchNormalization(),
-                                     'act': Activation('relu')}}
-        stage_1_block_n[i]= {'y1': {'conv': Conv2D(64,
-                                                   kernel_size=1,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')},
-                             'y2': {'conv': Conv2D(64,
-                                                   kernel_size=3,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')},
-                             'y3': {'conv': Conv2D(128,
-                                                   kernel_size=1,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')}}
-        stage_2_block_n[i]= {'y1': {'conv': Conv2D(128,
-                                                   kernel_size=1,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')},
-                             'y2': {'conv': Conv2D(128,
-                                                   kernel_size=3,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')},
-                             'y3': {'conv': Conv2D(256,
-                                                   kernel_size=1,
-                                                   strides=1,
-                                                   padding='same',
-                                                   kernel_initializer='he_normal',
-                                                   kernel_regularizer=l2(1e-4)),
-                                    'batch': BatchNormalization(),
-                                    'act': Activation('relu')}}
-
-    shared_layers = {'before': {'conv': Conv2D(16,
-                                               kernel_size=3,
-                                               strides=1,
-                                               padding='same',
-                                               kernel_initializer='he_normal',
-                                               kernel_regularizer=l2(1e-4)),
-                                'batch': BatchNormalization(),
-                                'act': Activation('relu')},
-                     'stage_0': {'block_0': {'y1': {'conv': Conv2D(16,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4))},
-                                             'y2': {'conv': Conv2D(16,
-                                                                   kernel_size=3,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'y3': {'conv': Conv2D(64,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'x1': {'conv': Conv2D(64,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'act': Activation('relu')}},
-                                 'block_n': stage_0_block_n},
-                     'stage_1': {'block_0': {'y1': {'conv': Conv2D(64,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'y2': {'conv': Conv2D(64,
-                                                                   kernel_size=3,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'y3': {'conv': Conv2D(128,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'x1': {'conv': Conv2D(128,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'act': Activation('relu')}},
-                                 'block_n': stage_1_block_n},
-                     'stage_2': {'block_0': {'y1': {'conv': Conv2D(128,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'y2': {'conv': Conv2D(128,
-                                                                   kernel_size=3,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'y3': {'conv': Conv2D(256,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'batch': BatchNormalization(),
-                                                    'act': Activation('relu')},
-                                             'x1': {'conv': Conv2D(256,
-                                                                   kernel_size=1,
-                                                                   strides=1,
-                                                                   padding='same',
-                                                                   kernel_initializer='he_normal',
-                                                                   kernel_regularizer=l2(1e-4)),
-                                                    'act': Activation('relu')}},
-                                 'block_n': stage_2_block_n},
-                     'end': {'batch': BatchNormalization(),
-                             'act': Activation('relu'),
-                             'pool': AveragePooling2D(pool_size=8),
-                             'flat': Flatten()}}
-
-    return shared_layers

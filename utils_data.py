@@ -120,7 +120,6 @@ class DirectoryIterator(Iterator):
             batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
                                for j in range(FLAGS.batch_size)]
 
-        # batch_x = np.array(batch_x)
         batch_x = np.expand_dims(np.array(batch_x), axis=4)
 
         for i in range(len(index_array)):

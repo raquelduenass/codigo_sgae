@@ -96,7 +96,7 @@ class DirectoryIterator(Iterator):
         segments = process_audio.separate_many_audio(self, index_array)
 
         # Initialize batches and indexes
-        batch_x = []
+        batch_x, batch_x_wind = [], [[]]*FLAGS.wind_len
         
         # Build batch of image data
         for i, j in enumerate(index_array):
@@ -112,6 +112,14 @@ class DirectoryIterator(Iterator):
                 batch_x.append(x)
 
         # Build batch of labels
-        batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
+        for i in range(FLAGS.wind_len):
+            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                               for j in range(FLAGS.batch_size)]
+
+        batch_x = np.expand_dims(np.array(batch_x), axis=4)
+
+        for i in range(len(index_array)):
+            batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
+                          batch_x_wind[3][i], batch_x_wind[4][i]]
     
         return batch_x

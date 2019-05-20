@@ -242,10 +242,6 @@ def _main():
     model = get_model_res_net(FLAGS.n, FLAGS.version, img_height, img_width,
                               FLAGS.num_classes, weights_path, FLAGS.f_output, FLAGS.structure)
 
-    rama1 = model(input1)
-    rama2 = model(input2)
-    comb = contatenate(output1, ouput2)
-
     # Serialize model into json
     json_model_path = os.path.join(FLAGS.experiment_root_directory, FLAGS.json_model_filename)
     utils.model_to_json(model, json_model_path)

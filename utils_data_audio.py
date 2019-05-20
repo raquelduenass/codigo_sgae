@@ -98,7 +98,7 @@ class DirectoryIterator(Iterator):
         """
 
         # Initialize batches
-        batch_x, batch_y_p = [], []
+        batch_x, batch_y_p, batch_x_wind = [], [], [[]]*FLAGS.wind_len
 
         # Build batch of image data
         for i, j in enumerate(index_array):
@@ -115,7 +115,16 @@ class DirectoryIterator(Iterator):
             batch_y = keras.utils.to_categorical(batch_y, num_classes=FLAGS.num_classes)
         else:
             batch_y = batch_y_p
-        batch_x = np.expand_dims(np.asarray(batch_x), axis=3)
+
+        for i in range(FLAGS.wind_len):
+            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                               for j in range(FLAGS.batch_size)]
+
+        batch_x = np.expand_dims(np.array(batch_x), axis=4)
+
+        for i in range(len(index_array)):
+            batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
+                          batch_x_wind[3][i], batch_x_wind[4][i]]
 
         return batch_x, np.asarray(batch_y)
 
