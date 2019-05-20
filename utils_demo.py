@@ -3,8 +3,7 @@ import numpy as np
 import utils
 import librosa
 import process_audio
-from keras.preprocessing.image import Iterator
-from keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import Iterator, ImageDataGenerator
 from common_flags import FLAGS
 
 

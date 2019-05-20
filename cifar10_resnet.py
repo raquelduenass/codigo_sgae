@@ -3,7 +3,7 @@ import keras
 from keras.layers import Dense, Conv2D, BatchNormalization, Activation
 from keras.layers import AveragePooling2D, Input, Flatten, Concatenate
 from keras.regularizers import l2
-from keras.models import Model, Sequential
+from keras.models import Model
 from common_flags import FLAGS
 
 
@@ -71,7 +71,40 @@ def res_net_layer(inputs,
     return x
 
 
-def res_net_v1(input_shape, depth, num_classes, f_output):
+def res_net(input_shape, depth):
+
+    base_model, inputs = [], []
+
+    # Output dimension
+    if FLAGS.f_output == 'sigmoid':
+        num_classes = FLAGS.num_classes-1
+    else:
+        num_classes = FLAGS.num_classes
+
+    # Network architecture
+    if FLAGS.version == 1:
+        if (depth - 2) % 6 != 0:
+            raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
+        inputs = Input(shape=input_shape)
+        base_model = base_res_net_v1(inputs, depth)
+
+    elif FLAGS.version == 2:
+        if (depth - 2) % 9 != 0:
+            raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
+        inputs = Input(shape=input_shape)
+        base_model = base_res_net_v2(inputs, depth)
+
+    y = base_model.output
+    outputs = Dense(num_classes,
+                    activation=FLAGS.f_output,
+                    kernel_initializer='he_normal')(y)
+
+    # Instantiate model.
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
+
+def base_res_net_v1(input_shape, depth):
     """ResNet Version 1 Model builder [a]
     Stacks of 2 x (3 x 3) Convolution2D-BN-ReLU
     Last ReLU is after the shortcut connection.
@@ -92,28 +125,44 @@ def res_net_v1(input_shape, depth, num_classes, f_output):
     # Arguments
         input_shape (tensor): shape of input image tensor
         depth (int): number of core convolution 2D layers
-        num_classes (int): number of classes
     # Returns
         model (Model): model instance
     """
-    if f_output == 'sigmoid':
-        num_classes = num_classes-1
+    # Start model definition.
+    num_filters = 16
+    num_res_blocks = int((depth - 2) / 6)
 
-    if (depth - 2) % 6 != 0:
-        raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
-    inputs = Input(shape=input_shape)
-    base_model = base_res_net_v1(inputs, depth)
-    y = base_model.output
-    outputs = Dense(num_classes,
-                    activation=f_output,
-                    kernel_initializer='he_normal')(y)
+    inputs = Input(input_shape)
 
-    # Instantiate model.
-    model = Model(inputs=inputs, outputs=outputs)
+    x = res_net_layer(inputs=inputs)
+    # Instantiate the stack of residual units
+    for stack in range(3):
+        for res_block in range(num_res_blocks):
+            y = res_net_layer(inputs=x,
+                              num_filters=num_filters,
+                              activation='relu')
+            y = res_net_layer(inputs=y,
+                              num_filters=num_filters)
+            if stack > 0 and res_block == 0:  # first layer but not first stack
+                # linear projection residual shortcut connection to match
+                # changed dims
+                x = res_net_layer(inputs=x,
+                                  num_filters=num_filters,
+                                  kernel_size=1,
+                                  batch_normalization=False)
+            x = keras.layers.add([x, y])
+            x = Activation('relu')(x)
+        num_filters *= 2
+
+    # Add classifier on top.
+    # v1 does not use BN after last shortcut connection-ReLU
+    x = AveragePooling2D(pool_size=8)(x)
+    y = Flatten()(x)
+    model = Model(inputs=inputs, outputs=y)
     return model
 
 
-def res_net_v2(input_shape, depth, num_classes, f_output):
+def base_res_net_v2(input_shape, depth):
     """ResNet Version 2 Model builder [b]
     Stacks of (1 x 1)-(3 x 3)-(1 x 1) BN-ReLU-Convolution2D or also known as
     bottleneck layer
@@ -135,62 +184,6 @@ def res_net_v2(input_shape, depth, num_classes, f_output):
     # Returns
         model (Model): model instance
     """
-    if f_output == 'sigmoid':
-        num_classes = num_classes-1
-
-    if (depth - 2) % 9 != 0:
-        raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
-    inputs = Input(shape=input_shape)
-    base_model = base_res_net_v2(inputs, depth)
-    y = base_model.output
-    outputs = Dense(num_classes,
-                    activation=f_output,
-                    kernel_initializer='he_normal')(y)
-
-    # Instantiate model.
-    model = Model(inputs=inputs, outputs=outputs)
-    return model
-
-
-def base_res_net_v1(input_shape, depth):
-    # Start model definition.
-    num_filters = 16
-    num_res_blocks = int((depth - 2) / 6)
-
-    inputs = Input(input_shape)
-
-    x = res_net_layer(inputs=inputs)
-    # Instantiate the stack of residual units
-    for stack in range(3):
-        for res_block in range(num_res_blocks):
-            strides = 1
-            y = res_net_layer(inputs=x,
-                              num_filters=num_filters,
-                              activation='relu',
-                              strides=strides)
-            y = res_net_layer(inputs=y,
-                              num_filters=num_filters)
-            if stack > 0 and res_block == 0:  # first layer but not first stack
-                # linear projection residual shortcut connection to match
-                # changed dims
-                x = res_net_layer(inputs=x,
-                                  num_filters=num_filters,
-                                  kernel_size=1,
-                                  strides=strides,
-                                  batch_normalization=False)
-            x = keras.layers.add([x, y])
-            x = Activation('relu')(x)
-        num_filters *= 2
-
-    # Add classifier on top.
-    # v1 does not use BN after last shortcut connection-ReLU
-    x = AveragePooling2D(pool_size=8)(x)
-    y = Flatten()(x)
-    model = Model(inputs=inputs, outputs=y)
-    return model
-
-
-def base_res_net_v2(input_shape, depth):
     # Start model definition.
     num_filters_in = 16
     num_filters_out = 0
@@ -254,18 +247,22 @@ def base_res_net_v2(input_shape, depth):
     return model
 
 
-def comb_res_net_unique(input_shape, depth, num_classes, f_output, version):
-    inputs, features = [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
+def comb_res_net(input_shape, depth):
+    base_model, inputs, features = [], [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
 
-    if f_output == 'sigmoid':
-        num_classes = num_classes - 1
+    # Output dimension
+    if FLAGS.f_output == 'sigmoid':
+        num_classes = FLAGS.num_classes - 1
+    else:
+        num_classes = FLAGS.num_classes
 
-    # Reuse model
-    if version == 1:
+    # Create simple model
+    if FLAGS.version == 1:
         base_model = base_res_net_v1(input_shape, depth)
-    elif version == 2:
+    elif FLAGS.version == 2:
         base_model = base_res_net_v2(input_shape, depth)
 
+    # Reuse model
     for i in range(FLAGS.wind_len):
         inputs[i] = Input(input_shape)
         features[i] = base_model(inputs[i])
@@ -273,7 +270,7 @@ def comb_res_net_unique(input_shape, depth, num_classes, f_output, version):
     union = Concatenate()(features)
 
     outputs = Dense(num_classes,
-                    activation=f_output,
+                    activation=FLAGS.f_output,
                     kernel_initializer='he_normal')(union)
     model = Model(inputs=inputs, outputs=outputs)
     return model

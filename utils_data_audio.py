@@ -6,8 +6,7 @@ import librosa
 import process_audio
 import process_label
 from keras import backend as k
-from keras.preprocessing.image import Iterator
-from keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import Iterator, ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
 
@@ -102,7 +101,8 @@ class DirectoryIterator(Iterator):
 
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = load_audio(self, j)
+            segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
+            x = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr, FLAGS.power, segment)
             # Data augmentation
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
@@ -184,15 +184,3 @@ def cross_val_load(dirs_file, moments_file, labels_file):
     labels_list = process_label.labels_to_number(labels_list, 'softmax')
     labels_list = [np.array(i) for i in labels_list]
     return dirs_list, np.array(moments_list, dtype=k.floatx()), np.array(labels_list, dtype=k.floatx())
-
-
-def load_audio(self, j):
-    """
-
-    :param self:
-    :param j:
-    :return:
-    """
-    segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
-    spec = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr, FLAGS.power, segment)
-    return spec

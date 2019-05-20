@@ -26,7 +26,7 @@ os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
-def get_model_res_net(n, version, img_height, img_width, output_dim, weights_path, f_output, structure):
+def get_model_res_net(img_height, img_width, weights_path):
     """
     Initialize model.
     # Arguments
@@ -37,6 +37,9 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
        num_img: Target images per block
        output_dim: Dimension of model output (number of classes).
        weights_path: Path to pre-trained model.
+       f_output: function of the last network layer ('sigmoid' or 'softmax')
+       structure: network architecture ('simple' with one spectrogram input or 'complex'
+                  with many inputs and filtering implied)
     # Returns
        model: A Model instance.
     """
@@ -44,26 +47,18 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
     input_shape = (img_height, img_width, 1)
     
     # Computed depth from supplied model parameter n
-    if structure == 'simple':
-        if version == 1:
-            depth = n * 6 + 2
-            model = cifar10_resnet.res_net_v1(input_shape=input_shape, depth=depth,
-                                              num_classes=output_dim, f_output=f_output)
-        else:
-            depth = n * 9 + 2
-            model = cifar10_resnet.res_net_v2(input_shape=input_shape, depth=depth,
-                                              num_classes=output_dim, f_output=f_output)
+    if FLAGS.version == 1:
+        depth = FLAGS.n * 6 + 2
     else:
-        if version == 1:
-            depth = n * 6 + 2
-        else:
-            depth = n * 9 + 2
-        model = cifar10_resnet.comb_res_net_unique(input_shape=input_shape, depth=depth,
-                                                   num_classes=output_dim, f_output=f_output,
-                                                   version=version)
+        depth = FLAGS.n * 9 + 2
+
+    if FLAGS.structure == 'simple':
+        model = cifar10_resnet.res_net(input_shape=input_shape, depth=depth)
+    else:
+        model = cifar10_resnet.comb_res_net(input_shape=input_shape, depth=depth)
 
     # Model name, depth and version
-    model_type = 'ResNet%dv%d' % (depth, version)
+    model_type = 'ResNet%dv%d' % (depth, FLAGS.version)
     print(model_type)
     print(model.summary())
 
@@ -78,6 +73,10 @@ def get_model_res_net(n, version, img_height, img_width, output_dim, weights_pat
 
 
 def many_generator(generator):
+    """
+    Provides the multiple network inputs from the batch data
+    """
+    # TODO: Estandarizar al tamaño de FLAGS.wind_len
     while True:
         first, second, third, forth, fifth = [], [], [], [], []
         x = generator.next()
@@ -88,7 +87,6 @@ def many_generator(generator):
             forth.append(x[0][i][3])
             fifth.append(x[0][i][4])
         # Yield both images and their mutual label
-        a = x[0][:][0]
         yield [np.asarray(first), np.asarray(second), np.asarray(third),
                np.asarray(forth), np.asarray(fifth)], x[1]
 
@@ -119,18 +117,17 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     # Train model
     steps_per_epoch = int(np.ceil(train_data_generator.samples / FLAGS.batch_size))
     validation_steps = int(np.ceil(val_data_generator.samples / FLAGS.batch_size))-1
-    
-    lr_scheduler = LearningRateScheduler(cifar10_resnet.lr_schedule)
 
-    lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
-                                   cooldown=0,
-                                   patience=5,
-                                   min_lr=0.5e-6)
+    # Learning rate
+    lr_scheduler = LearningRateScheduler(cifar10_resnet.lr_schedule)
+    lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1), cooldown=0,
+                                   patience=5, min_lr=0.5e-6)
     
     # Save Tensor board information
     str_time = strftime("%Y%b%d_%Hh%Mm%Ss", localtime(time()))
     tensor_board = TensorBoard(log_dir="logs/{}".format(str_time), histogram_freq=0)
     callbacks = [write_best_model, save_model_and_loss, lr_reducer, lr_scheduler, tensor_board]
+
     if FLAGS.structure == 'complex':
         model.fit_generator(many_generator(train_data_generator),
                             epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
@@ -139,7 +136,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=30,
-                            workers=1,
+                            workers=0,
                             use_multiprocessing=False)
     else:
         model.fit_generator(train_data_generator,
@@ -239,8 +236,7 @@ def _main():
         initial_epoch = FLAGS.initial_epoch
 
     # Define model
-    model = get_model_res_net(FLAGS.n, FLAGS.version, img_height, img_width,
-                              FLAGS.num_classes, weights_path, FLAGS.f_output, FLAGS.structure)
+    model = get_model_res_net(img_height, img_width, weights_path)
 
     # Serialize model into json
     json_model_path = os.path.join(FLAGS.experiment_root_directory, FLAGS.json_model_filename)

@@ -4,8 +4,7 @@ import numpy as np
 import keras
 import process_label
 from keras import backend as k
-from keras.preprocessing.image import Iterator
-from keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import Iterator, ImageDataGenerator
 from random import shuffle as sh
 from common_flags import FLAGS
 
