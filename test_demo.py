@@ -62,9 +62,7 @@ def _main():
         real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
     # Class softening
-    soft_labels = process_label.soft_max(predicted_labels, FLAGS.wind_len,
-                                         FLAGS.separation / FLAGS.overlap,
-                                         len(test_generator.files_length))
+    soft_labels = process_label.soft_max(predicted_labels, len(test_generator.files_length))
 
     # Save predicted and softened labels as a dictionary
     labels_dict = {'predicted_labels': predicted_labels,
@@ -76,8 +74,8 @@ def _main():
     for j in range(len(test_generator.files_length)):
         print('File: '+str(test_generator.file_names[j]))
         process_label.show_metrics(real_labels[j], predicted_labels[j], soft_labels[j])
-        process_label.show_detections(soft_labels[j], FLAGS.separation, FLAGS.overlap)
-        process_label.visualize_output(soft_labels[j], FLAGS.separation, FLAGS.overlap, CLASSES, probabilities[j])
+        process_label.show_detections(soft_labels[j])
+        process_label.visualize_output(soft_labels[j], CLASSES, probabilities[j])
 
 
 def main(argv):

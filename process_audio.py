@@ -83,12 +83,9 @@ def separate_many_audio(self, index_array):
     return segments
 
 
-def compute_mel_gram(separation, sr, power, segment):
+def compute_mel_gram(segment):
     """
     Computation of the mel-spectrogram of an audio sequence
-    :param separation: time duration represented in the spectrogram
-    :param sr: sample rate of the audio
-    :param power: representation of the spectrogram: energy/power
     :param segment: audio fragment from which extracting the mel-spectrogram
     :return ret: mel-spectrogram
     """
@@ -96,17 +93,17 @@ def compute_mel_gram(separation, sr, power, segment):
     n_mel = 64  # 96
     hop_len = 441  # 256
     n_sample = segment.shape[0]
-    n_sample_fit = int(separation*sr)
+    n_sample_fit = int(FLAGS.separation*FLAGS.sr)
 
     if n_sample < n_sample_fit:  # if too short
-        src = np.concatenate([segment, np.zeros((int(separation*sr) - n_sample,))])
+        src = np.concatenate([segment, np.zeros((int(FLAGS.separation*FLAGS.sr) - n_sample,))])
     elif n_sample > n_sample_fit:  # if too long
         src = segment[int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
     else:
         src = segment
     mel = librosa.feature.melspectrogram(
-            y=src, sr=sr, hop_length=hop_len,
-            n_fft=n_fft, n_mels=n_mel, power=power)
+            y=src, sr=FLAGS.sr, hop_length=hop_len,
+            n_fft=n_fft, n_mels=n_mel, power=FLAGS.power)
 
     ret = librosa.power_to_db(mel)
     return ret

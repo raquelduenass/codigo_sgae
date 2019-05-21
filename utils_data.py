@@ -59,18 +59,17 @@ class DirectoryIterator(Iterator):
             dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
             labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
         
-        self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file,
-                                                            FLAGS.f_output)
+        self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
         
         # Number of samples in data
         self.samples = len(self.file_names)
         self.num_classes = len(np.unique(self.ground_truth, axis=0))
+
         # Check if data is empty
         if self.samples == 0:
             raise IOError("Did not find any data")
 
-        print('Found {} images belonging to {} classes.'.format(
-                self.samples, FLAGS.num_classes))
+        print('Found {} images belonging to {} classes.'.format(self.samples, FLAGS.num_classes))
 
         super(DirectoryIterator, self).__init__(self.samples, batch_size, shuffle, seed)
 
@@ -128,60 +127,30 @@ class DirectoryIterator(Iterator):
         return batch_x, np.asarray(batch_y)
 
 
-def cross_val_create(path):
+def cross_val_load(dirs_file, labels_file):
     """
-
-    :param path: folder containing the data
-    :return: split of the data in train, validation and test sets
-    """
-    # File names, moments and labels of all samples in data.
-    file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
-    labels = utils.file_to_list(os.path.join(path, 'labels.txt'))
-    order = list(range(len(file_names)))
-    sh(order)
-    order = np.asarray(order)
-    index4 = int(round(len(order)/4))
-    index2 = int(round(len(order)/2))
-    
-    # Create files of directories, labels and moments
-    utils.list_to_file([file_names[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_root_directory, 'train_files.txt'))
-    utils.list_to_file([file_names[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_root_directory, 'val_files.txt'))
-    utils.list_to_file([file_names[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_root_directory, 'test_files.txt'))
-    utils.list_to_file([labels[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt'))
-    utils.list_to_file([labels[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt'))
-    utils.list_to_file([labels[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt'))
-    return
-
-
-def cross_val_load(dirs_file, labels_file, f_output):
-    """
-
-    :param dirs_file: txt file containing the name of the samples
-    :param labels_file: txt file containing the labels of each sample
-    :param f_output: function of the last layer of the CNN ('sigmoid' or 'softmax')
-    :return dirs_list: samples names
-    :return labels_list: ground truth
+    # Arguments:
+        dirs_file: txt file containing the name of the samples
+        labels_file: txt file containing the labels of each sample
+    # Return:
+        dirs_list: samples names
+        labels_list: ground truth
     """
     dirs_list = utils.file_to_list(dirs_file)
     labels_list = utils.file_to_list(labels_file)
-    labels_list = process_label.labels_to_number(labels_list, f_output)
+    labels_list = process_label.labels_to_number(labels_list)
     labels_list = [np.array(i) for i in labels_list]
     return dirs_list, labels_list
 
 
 def load_many(self, j, wind_len):
     """
-
-    :param self:
-    :param j:
-    :param wind_len:
-    :return images:
+    # Arguments:
+        self:
+        j:
+        wind_len:
+    # Return:
+        images:
     """
     a = np.arange(start=(1-wind_len)/2, stop=(wind_len-1)/2+1)
     images = []

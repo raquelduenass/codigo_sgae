@@ -63,7 +63,7 @@ class DirectoryIterator(Iterator):
                 self.files_length.append(int(self.files_length[i-1]) +
                                          int((librosa.get_duration(audio) -
                                               FLAGS.separation) // FLAGS.overlap))
-        self.samples = self.files_length[len(self.files_length)-1]
+        self.samples = self.files_length[-1]  # len(self.files_length)-1]
         
         # Silence labels
         self.silence_labels = [[]]*self.samples
@@ -99,8 +99,7 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = process_audio.compute_mel_gram(FLAGS.separation, FLAGS.sr,
-                                               FLAGS.power, segments[i])
+            x = process_audio.compute_mel_gram(segments[i])
             if process_audio.silence_detection(x):
                 self.silence_labels[j] = 'S'
             else:

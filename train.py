@@ -4,11 +4,11 @@ import os
 import sys
 import gflags
 import logz
-# import nets
 import cifar10_resnet
 import utils
 import utils_data
 import utils_data_audio
+import process_database
 import log_utils
 from common_flags import FLAGS
 from time import time, strftime, localtime
@@ -170,10 +170,7 @@ def _main():
         
     # Split the data into training, validation and test sets
     if FLAGS.initial_epoch == 0:
-        if FLAGS.from_audio:
-            utils_data_audio.cross_val_create(FLAGS.data_path)
-        else:
-            utils_data.cross_val_create(FLAGS.data_path)
+        process_database.cross_val_create(FLAGS.data_path)
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height

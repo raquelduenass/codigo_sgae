@@ -72,7 +72,14 @@ def res_net_layer(inputs,
 
 
 def res_net(input_shape, depth):
-
+    """
+    Model based on single flow of layers based on ResNet architecture
+    # Arguments
+        input_shape (tensor): shape of input image tensor
+        depth (int): number of core convolution 2D layers
+    # Returns
+        model (Model): model instance
+    """
     base_model, inputs = [], []
 
     # Output dimension
@@ -116,12 +123,6 @@ def base_res_net_v1(input_shape, depth):
     stage 0: 32x32, 16
     stage 1: 16x16, 32
     stage 2:  8x8,  64
-    The Number of parameters is approx the same as Table 6 of [a]:
-    ResNet20 0.27M
-    ResNet32 0.46M
-    ResNet44 0.66M
-    ResNet56 0.85M
-    ResNet110 1.7M
     # Arguments
         input_shape (tensor): shape of input image tensor
         depth (int): number of core convolution 2D layers
@@ -248,6 +249,14 @@ def base_res_net_v2(input_shape, depth):
 
 
 def comb_res_net(input_shape, depth):
+    """
+    Model with shared layers based on ResNet architecture
+    # Arguments
+        input_shape (tensor): shape of input image tensor
+        depth (int): number of core convolution 2D layers
+    # Returns
+        model (Model): model instance
+    """
     base_model, inputs, features = [], [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
 
     # Output dimension

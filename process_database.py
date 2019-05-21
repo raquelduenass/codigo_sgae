@@ -11,71 +11,73 @@ import utils
 import librosa
 import numpy as np
 import process_audio
+import process_label
 from pydub import AudioSegment
 from scipy.io import wavfile
 from random import randint
+from common_flags import FLAGS
+from random import shuffle as sh
 
 
-def data_and_labels(music_path, data_list, label_list, moments_list, label, separation):
+def data_and_labels(music_path, data_list, label_list, moments_list, label):
     """
-
-    :param music_path: folder containing the data
-    :param data_list:
-    :param label_list:
-    :param moments_list:
-    :param label: ground truth of the subset of samples
-    :param separation: represented time in each spectrogram
-    :return data_list:
-    :return label_list:
-    :return moments_list:
+    # Arguments:
+        music_path: folder containing the data
+        data_list:
+        label_list:
+        moments_list:
+        label: ground truth of the subset of samples
+    # Return:
+        data_list:
+        label_list:
+        moments_list:
     """
     for music_file in os.listdir(music_path):
         entry_path = os.path.join(music_path, music_file)
         
         if music_file.endswith('.wav'):
             audio = AudioSegment.from_file(entry_path, format="wav")
-            for i in range(int(audio.duration_seconds/separation)):
+            for i in range(int(audio.duration_seconds/FLAGS.separation)):
                 data_list.append(os.path.abspath(os.path.join(music_path, music_file)))
-                moments_list.append(i*separation)
+                moments_list.append(i * FLAGS.separation)
                 label_list.append(label)
                 
         elif music_file.endswith('.mp3'):
             audio = AudioSegment.from_file(entry_path, format="mp3")
-            for i in range(int(audio.duration_seconds/separation)):
+            for i in range(int(audio.duration_seconds/FLAGS.separation)):
                 data_list.append(os.path.abspath(os.path.join(music_path, music_file)))
-                moments_list.append(i*separation)
+                moments_list.append(i * FLAGS.separation)
                 label_list.append(label)
                 
     return data_list, label_list, moments_list
 
 
-def data_and_labels_mu_speak(label, music_file, pre_label,
-                             start_list, end_list, separation, overlap):
+def data_and_labels_mu_speak(label, music_file, pre_label, start_list, end_list):
     """
-    :param label:
-    :param music_file:
-    :param pre_label:
-    :param start_list:
-    :param end_list:
-    :param separation: represented time in each spectrogram
-    :param overlap: temporal overlap between contiguous spectrograms from the same audio
-    :return label_list:
+    # Arguments:
+        label:
+        music_file:
+        pre_label:
+        start_list:
+        end_list:
+    # Return:
+        label_list:
     """
     moments_list = []
     audio = AudioSegment.from_file(music_file, format="mp3")
-    if not(overlap == 0):
-        param = separation / overlap
-        start_list[:] = [int(x/overlap) for x in start_list]
-        end_list[:] = [int(((x/overlap)//param)*param) for x in end_list]
-        labels = np.ones((int((int(audio.duration_seconds / overlap)//param)*param),))
-        for i in range(int(audio.duration_seconds*param)):
-            moments_list.append(i * overlap)
+    if not(FLAGS.overlap == 0):
+        param = FLAGS.separation / FLAGS.overlap
+        start_list[:] = [int(x / FLAGS.overlap) for x in start_list]
+        end_list[:] = [int(((x / FLAGS.overlap) // param) * param) for x in end_list]
+        labels = np.ones((int((int(audio.duration_seconds / FLAGS.overlap)//param) * param),))
+        for i in range(int(audio.duration_seconds * param)):
+            moments_list.append(i * FLAGS.overlap)
     else:
-        start_list[:] = [int(x / separation) for x in start_list]
-        end_list[:] = [int(x / separation) for x in end_list]
-        labels = np.ones((int(audio.duration_seconds / separation),))
-        for i in range(int(audio.duration_seconds / separation)):
-            moments_list.append(i * separation)
+        start_list[:] = [int(x / FLAGS.separation) for x in start_list]
+        end_list[:] = [int(x / FLAGS.separation) for x in end_list]
+        labels = np.ones((int(audio.duration_seconds / FLAGS.separation),))
+        for i in range(int(audio.duration_seconds / FLAGS.separation)):
+            moments_list.append(i * FLAGS.separation)
 
     if label == 'M':
         labels = labels.astype(int)*3
@@ -95,23 +97,20 @@ def data_and_labels_mu_speak(label, music_file, pre_label,
         return label_list
 
 
-def create_database(root_data_path, separated, separation, overlap):
+def create_database(root_data_path, separated):
     """
-
-    :param root_data_path: folder containing the data
-    :param separated: boolean indicating if the audio files are separated in folders according to each class (True) or not
-    :param separation: represented time in each spectrogram
-    :param overlap: temporal overlap between contiguous spectrograms from the same audio
-    :return:
+    # Arguments:
+        root_data_path: folder containing the data
+        separated: boolean indicating if the audio files are separated in
+                   folders according to each class (True) or not
     """
     data_list, label_list, moments_list = [], [], []
     
     if separated:
         for classes in os.listdir(root_data_path):
             data_list, label_list, moments_list = data_and_labels(os.path.join(root_data_path, classes),
-                                                                  data_list, label_list, moments_list,
-                                                                  classes, separation)
-        label_list = utils.labels_to_number(label_list)
+                                                                  data_list, label_list, moments_list, classes)
+        label_list = process_label.labels_to_number(label_list)
 
     else:
         for csv_file in os.listdir(os.path.join(root_data_path, 'meta')):
@@ -137,16 +136,14 @@ def create_database(root_data_path, separated, separation, overlap):
                             start_speech.append(start)
                             end_speech.append(start + int(round(float(row[0].split(',')[1]))))
                 
-                label_list_m, moments_list_m = data_and_labels_mu_speak(
-                    'M', audio_file, label_list,
-                    start_music, end_music, separation, overlap)
-                label_list_h = data_and_labels_mu_speak(
-                    'H', audio_file, label_list_m,
-                    start_speech, end_speech, separation, overlap)
+                label_list_m, moments_list_m = data_and_labels_mu_speak('M', audio_file, label_list,
+                                                                        start_music, end_music)
+                label_list_h = data_and_labels_mu_speak('H', audio_file, label_list_m,
+                                                        start_speech, end_speech)
                 label_list.append(label_list_h)
                 moments_list.append(moments_list_m)
     
-    # Save audios, labels and moments in file
+    # Save file names, labels and moments in file
     utils.list_to_file(data_list, os.path.join(root_data_path, 'data.txt'))
     utils.list_to_file(label_list, os.path.join(root_data_path, 'labels.txt'))
     utils.list_to_file(moments_list, os.path.join(root_data_path, 'moments.txt'))
@@ -155,11 +152,12 @@ def create_database(root_data_path, separated, separation, overlap):
 
 def classes_combination(root_data_path, equal, combs, speech_pct):
     """
-    :param root_data_path: folder containing the data
-    :param equal: boolean indicating if the files are all of the same length (True)
-    :param combs: array indicating the position of the classes to be mixed
-    :param speech_pct: percentage of the level of speech over another class
-    :return: creation of mixed classes files
+    Creation of mixed classes files
+    # Arguments:
+        root_data_path: folder containing the data
+        equal: boolean indicating if the files are all of the same length (True)
+        combs: array indicating the position of the classes to be mixed
+        speech_pct: percentage of the level of speech over another class
     """
     classes = os.listdir(root_data_path)
     speech_path = os.path.join(root_data_path, classes[combs[1]])
@@ -167,7 +165,7 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
     speech_files = [os.path.join(speech_path, i) for i in os.listdir(speech_path)]
     music_files = [os.path.join(music_path, i) for i in os.listdir(music_path)]
     j = 0
-    for i in range(len(os.listdir(speech_path))):
+    for i in range(len(speech_files)):
         speech, sr_speech = librosa.load(speech_files[i])
         music, sr_music = librosa.load(music_files[j])
         speech = librosa.resample(speech, sr_speech, sr_music)
@@ -197,44 +195,42 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
 
 def extract_spec_grams(data_path, save_path):
     """
-    :param data_path: folder containing the audio files
-    :param save_path: folder to be containing the spectrograms
-    :return: creation of spectrograms from segments of the audio files
+    Creation of spectrograms from segments of the audio files
+    # Arguments:
+        data_path: folder containing the audio files
+        save_path: folder to be containing the spectrograms
     """
-    separation = 0.96
-    power = 2
     for classes in os.listdir(data_path):
         j = 0
         for files in os.listdir(os.path.join(data_path, classes)):
             file_path = os.path.join(data_path, classes, files)
             if file_path.endswith('.wav') or file_path.endswith('.mp3'):
                 audio, sr = librosa.load(file_path)
-                audio = librosa.resample(audio, sr, 44100)
-                sr = 44100
-                set = list(np.arange(start=0, stop=librosa.get_duration(audio), step=separation))
+                audio = librosa.resample(audio, sr, FLAGS.sr)
+                set = list(np.arange(start=0, stop=librosa.get_duration(audio), step=FLAGS.separation))
                 set = [np.round(i, decimals=2) for i in set]
-                for i in range(len(set)):  # range(0, int(librosa.get_duration(audio)), int(separation)):
-                    segment = audio[int(i*separation*sr):int((i+1)*separation*sr)]
-                    mel = process_audio.compute_mel_gram(separation, sr, power, segment)
+                for i in range(len(set)):
+                    segment = audio[int(i * FLAGS.separation * FLAGS.sr):
+                                    int((i+1) * FLAGS.separation * FLAGS.sr)]
+                    mel = process_audio.compute_mel_gram(segment)
                     np.save(os.path.join(save_path, classes, 'mel_'+str(j)+'.npy'), mel)
                     j = j+1
 
 
-def data_files(data_path, separation=0, from_audio=False):
+def data_files(data_path):
     """
-    :param data_path: folder containing the data
-    :param separation: temporal frame of each spectrogram
-    :param from_audio: boolean indicating if the data is audio (True) or spectrograms (False)
-    :return: txt files are created
+    txt files are created
+    # Arguments:
+        data_path: folder containing the data
     """
     file_names, labels, moments = [], [], []
     for classes in os.listdir(data_path):
         class_path = os.path.join(data_path, classes)
 
-        if from_audio:
+        if FLAGS.from_audio:
             for files in os.listdir(class_path):
                 length = librosa.get_duration(librosa.load(os.path.join(class_path, files))[0])
-                for moment in range(0, int(length), separation):
+                for moment in range(0, int(length), FLAGS.separation):
                     moments.append(moment)
                     labels.append(classes)
                     file_names.append(os.path.join(class_path, files))
@@ -250,8 +246,10 @@ def data_files(data_path, separation=0, from_audio=False):
 
 def get_transitions(duration):
     """
-    :param duration:
-    :return transitions:
+    # Arguments:
+        duration:
+    # Return:
+        transitions:
     """
     init_transitions, transitions = [], []
     for j in range(randint(1, 9)):
@@ -268,9 +266,10 @@ def get_transitions(duration):
 
 def create_manual_demo(data_path, save_path):
     """
-    :param data_path: folder containing the audio files to be mixed
-    :param save_path: folder containing the final mixed audios
-    :return: creation of randomly mixed audio files
+    Creation of randomly mixed audio files
+    # Arguments:
+        data_path: folder containing the audio files to be mixed
+        save_path: folder containing the final mixed audios
     """
     classes = os.listdir(data_path)
     music_files = os.listdir(os.path.join(data_path, classes[0]))
@@ -316,6 +315,46 @@ def create_manual_demo(data_path, save_path):
         labels.append(audio_labels)
     utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
+    return
+
+
+def cross_val_create(path):
+    """
+
+    :param path: folder containing the data
+    :return: split of the data in train, validation and test sets
+    """
+    # File names, moments and labels of all samples in data.
+    file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
+    labels = utils.file_to_list(os.path.join(path, 'labels.txt'))
+    order = list(range(len(file_names)))
+    sh(order)
+    order = np.asarray(order)
+    index4 = int(round(len(order) / 4))
+    index2 = int(round(len(order) / 2))
+
+    # Create files of directories, labels and moments
+    utils.list_to_file([file_names[i] for i in order[index2:]],
+                       os.path.join(FLAGS.experiment_root_directory, 'train_files.txt'))
+    utils.list_to_file([file_names[i] for i in order[index4:index2]],
+                       os.path.join(FLAGS.experiment_root_directory, 'val_files.txt'))
+    utils.list_to_file([file_names[i] for i in order[0:index4]],
+                       os.path.join(FLAGS.experiment_root_directory, 'test_files.txt'))
+    utils.list_to_file([labels[i] for i in order[index2:]],
+                       os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt'))
+    utils.list_to_file([labels[i] for i in order[index4:index2]],
+                       os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt'))
+    utils.list_to_file([labels[i] for i in order[0:index4]],
+                       os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt'))
+
+    if FLAGS.from_audio:
+        moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
+        utils.list_to_file([moments[i] for i in order[index2:]],
+                           os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
+        utils.list_to_file([moments[i] for i in order[index4:index2]],
+                           os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
+        utils.list_to_file([moments[i] for i in order[0:index4]],
+                           os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
     return
 
 

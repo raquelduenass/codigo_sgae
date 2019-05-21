@@ -4,14 +4,16 @@ import numpy as np
 from matplotlib import pyplot as plt
 from keras.utils import to_categorical
 from sklearn import preprocessing
+from common_flags import FLAGS
 
 
 def show_metrics(real, predicted, soft):
     """
     Printing of the main metrics to check the performance of the system
-    :param real: ground truth
-    :param predicted: predictions from the CNN and silence
-    :param soft: softened predictions
+    # Arguments:
+        real: ground truth
+        predicted: predictions from the CNN and silence
+        soft: softened predictions
     """
 
     real = real[:len(predicted)]
@@ -30,52 +32,51 @@ def show_metrics(real, predicted, soft):
     return
 
 
-def show_detections(labels, separation, overlap):
+def show_detections(labels):
     """
-
-    :param labels:
-    :param separation:
-    :param overlap:
-    :return:
+    Print the moments and durations of music detections
+    # Arguments:
+        labels:
+        separation:
+        overlap:
     """
     music_pos, music_dur = counting(labels, 'M')
     print('Music detected in:')
     for i in range(len(music_pos)):
-        if overlap == 0:
-            print('Beginning: ', (music_pos[i] * separation) // 60, 'min ',
-                  int((music_pos[i] * separation) % 60),
-                  'seg - Duration: ', music_dur[i] * separation)
+        if FLAGS.overlap == 0:
+            print('Beginning: ', (music_pos[i] * FLAGS.separation) // 60, 'min ',
+                  int((music_pos[i] * FLAGS.separation) % 60),
+                  'seg - Duration: ', music_dur[i] * FLAGS.separation)
         else:
-            print('Beginning: ', int((music_pos[i] * overlap) // 60), 'min ',
-                  int((music_pos[i] * overlap) % 60),
-                  'seg - Duration: ', music_dur[i] * overlap)
+            print('Beginning: ', int((music_pos[i] * FLAGS.overlap) // 60), 'min ',
+                  int((music_pos[i] * FLAGS.overlap) % 60),
+                  'seg - Duration: ', music_dur[i] * FLAGS.overlap)
     return
 
 
-def soft_max_prob(predicted, wind_len, param, files, probabilities):
+def soft_max_prob(predicted, files, probabilities):
     # TODO: Introduce probabilities of CNN
     """
-
-    :param predicted:
-    :param wind_len:
-    :param param:
-    :param files:
-    :param probabilities:
-    :return:
+    # Arguments:
+        predicted:
+        files:
+        probabilities:
+    # Return:
+        ret_soft:
     """
     ret_soft = [[]] * files
 
     for j in range(files):
-        if not (param == 0):
+        if not (FLAGS.separation / FLAGS.overlap == 0):
             join = []
             prob_over = []
             for i in range(len(predicted[j])):
-                if i < param:
+                if i < FLAGS.separation / FLAGS.overlap:
                     join.append(predicted[j][i])
                     prob_over.append(probabilities[j][i])
                 else:
                     sum_prob = 0
-                    for k in range(int(i-param), int(i)):
+                    for k in range(int(i-FLAGS.separation / FLAGS.overlap), int(i)):
                         sum_prob += probabilities[j][k]
                     prob_over.append(sum_prob)
                     join.append(predicted[j][prob_over[i].index(max(prob_over[i]))])
@@ -85,46 +86,46 @@ def soft_max_prob(predicted, wind_len, param, files, probabilities):
 
         soft = []
         for i in range(len(join)):
-            if i < wind_len // 2:
-                soft.append(Counter(join[0:i + wind_len // 2]).most_common(1)[0][0])
-            elif i > len(join) - 1 - wind_len // 2:
-                soft.append(Counter(join[i - wind_len // 2:len(join) - 1]).most_common(1)[0][0])
+            if i < FLAGS.wind_len // 2:
+                soft.append(Counter(join[0:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
+            elif i > len(join) - 1 - FLAGS.wind_len // 2:
+                soft.append(Counter(join[i - FLAGS.wind_len // 2:len(join) - 1]).most_common(1)[0][0])
             else:
-                soft.append(Counter(join[i - wind_len // 2:i + wind_len // 2]).most_common(1)[0][0])
+                soft.append(Counter(join[i - FLAGS.wind_len // 2:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
         ret_soft[j] = soft
     return ret_soft
 
 
-def soft_max(predicted, wind_len, param, files):
+def soft_max(predicted, files):
     """
-
-    :param predicted:
-    :param wind_len:
-    :param param:
-    :param files:
-    :return:
+    # Arguments:
+        predicted:
+        files:
+    # Return:
+        ret_soft:
     """
     ret_soft = [[]]*files
 
     for j in range(files):
-        if not(param == 0):
+        if not(FLAGS.separation / FLAGS.overlap == 0):
             join = []
             for i in range(len(predicted[j])):
-                if i < param:
+                if i < FLAGS.separation / FLAGS.overlap:
                     join.append(predicted[j][i])
                 else:
-                    join.append(Counter(predicted[j][int(i-param):int(i)]).most_common(1)[0][0])
+                    join.append(Counter(predicted[j]
+                                        [int(i-FLAGS.separation / FLAGS.overlap):int(i)]).most_common(1)[0][0])
         else:
             join = predicted[j]
 
         soft = []
         for i in range(len(join)):
-            if i < wind_len//2:
-                soft.append(Counter(join[0:i+wind_len//2]).most_common(1)[0][0])
-            elif i > len(join)-1-wind_len//2:
-                soft.append(Counter(join[i-wind_len//2:len(join)-1]).most_common(1)[0][0])
+            if i < FLAGS.wind_len//2:
+                soft.append(Counter(join[0:i+FLAGS.wind_len//2]).most_common(1)[0][0])
+            elif i > len(join)-1-FLAGS.wind_len//2:
+                soft.append(Counter(join[i-FLAGS.wind_len//2:len(join)-1]).most_common(1)[0][0])
             else:
-                soft.append(Counter(join[i-wind_len//2:i+wind_len//2]).most_common(1)[0][0])
+                soft.append(Counter(join[i-FLAGS.wind_len//2:i+FLAGS.wind_len//2]).most_common(1)[0][0])
         ret_soft[j] = soft
     return ret_soft
 
@@ -133,10 +134,12 @@ def counting(data, label):
     """
     Identifies the position and duration of the appearances of a determined class
     in a sequence of labels
-    :param data: sequence of labels
-    :param label: name of class to identify
-    :return pos: list of the offset of every appearance of the class
-    :return length: list of durations of the appearances of the class
+    # Arguments:
+        data: sequence of labels
+        label: name of class to identify
+    # Return:
+        pos: list of the offset of every appearance of the class
+        length: list of durations of the appearances of the class
     """
     loc = [i for i in range(len(data)) if data[i] == label]
     if not(len(loc) == 0):
@@ -153,10 +156,12 @@ def counting(data, label):
 def join_labels(predicted, silence, lengths=None):
     """
     Merge of the silence labels and the predicted ones from the CNN
-    :param predicted: predictions from the CNN
-    :param silence: silence detections
-    :param lengths:
-    :return: silence: merge of the inputs
+    # Arguments:
+        predicted: predictions from the CNN
+        silence: silence detections
+        lengths:
+    # Return:
+        silence: merge of the inputs
     """
     j = 0
     for i in range(len(predicted)):
@@ -178,6 +183,13 @@ def join_labels(predicted, silence, lengths=None):
 
 
 def separate_labels(labels, lengths):
+    """
+    # Arguments:
+        labels: original flow of labels from all demo audio files
+        lengths: duration of each demo file
+    # Return:
+        labels_ret: list of labels from each file
+    """
     labels_ret = [[]] * len(lengths)
     for i in range(len(lengths)):
         if i == 0:
@@ -187,14 +199,14 @@ def separate_labels(labels, lengths):
     return labels_ret
 
 
-def labels_to_number(labels, f_output):
+def labels_to_number(labels):
     """
-
-    :param labels:
-    :param f_output:
-    :return:
+    # Arguments:
+        labels: original ground truth
+    # Return:
+        numbers: output of the network according to its output function
     """
-    if f_output == 'sigmoid':
+    if FLAGS.f_output == 'sigmoid':
         dct = {'music': [1, 0, 0], 'music_speech': [1, 1, 0],
                'speech': [0, 1, 0], 'noise': [0, 0, 1]}
     else:
@@ -203,13 +215,20 @@ def labels_to_number(labels, f_output):
     return numbers
 
 
-def visualize_output(outputs, separation, overlap, labels, ground_truth):
-    if overlap == 0:
-        distance = separation
-        duration = len(outputs[0]) * separation
+def visualize_output(outputs, labels, ground_truth):
+    """
+    Visualization of each output channel across time
+    # Arguments:
+        outputs:
+        labels:
+        ground_truth:
+    """
+    if FLAGS.overlap == 0:
+        distance = FLAGS.separation
+        duration = len(outputs[0]) * FLAGS.separation
     else:
-        distance = overlap / separation
-        duration = len(outputs[0]) * overlap / separation
+        distance = FLAGS.overlap / FLAGS.separation
+        duration = len(outputs[0]) * FLAGS.overlap / FLAGS.separation
 
     plt.subplot(211)
     t = np.arange(0.0, duration, distance)
