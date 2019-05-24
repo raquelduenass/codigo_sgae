@@ -7,15 +7,13 @@ import logz
 import cifar10_resnet
 import utils
 import utils_data
-import utils_data_audio
 import process_database
 import log_utils
 from common_flags import FLAGS
 from time import time, strftime, localtime
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from keras.callbacks import ReduceLROnPlateau
-from keras.callbacks import TensorBoard
+from keras.callbacks import ReduceLROnPlateau, TensorBoard
 from keras import backend as k
 
 
@@ -30,16 +28,9 @@ def get_model_res_net(img_height, img_width, weights_path):
     """
     Initialize model.
     # Arguments
-       n: parameter that determines the net depth.
-       version: 1 for ResNet v1 or 2 for v2.
        img_width: Target image width.
        img_height: Target image height.
-       num_img: Target images per block
-       output_dim: Dimension of model output (number of classes).
        weights_path: Path to pre-trained model.
-       f_output: function of the last network layer ('sigmoid' or 'softmax')
-       structure: network architecture ('simple' with one spectrogram input or 'complex'
-                  with many inputs and filtering implied)
     # Returns
        model: A Model instance.
     """
@@ -52,10 +43,7 @@ def get_model_res_net(img_height, img_width, weights_path):
     else:
         depth = FLAGS.n * 9 + 2
 
-    if FLAGS.structure == 'simple':
-        model = cifar10_resnet.res_net(input_shape=input_shape, depth=depth)
-    else:
-        model = cifar10_resnet.comb_res_net(input_shape=input_shape, depth=depth)
+    model = cifar10_resnet.res_net(input_shape=input_shape, depth=depth)
 
     # Model name, depth and version
     model_type = 'ResNet%dv%d' % (depth, FLAGS.version)
@@ -76,11 +64,14 @@ def many_generator(generator):
     """
     Provides the multiple network inputs from the batch data
     """
-    # TODO: Estandarizar al tamaño de FLAGS.wind_len
+    # TODO: Standardize to FLAGS.wind_len
     while True:
+        # windows = [[]]*FLAGS.wind_len
         first, second, third, forth, fifth = [], [], [], [], []
         x = generator.next()
         for i in range(FLAGS.batch_size):
+            # for j in range(FLAGS.wind_len):
+            # windows[j].append(x[0][i][j])
             first.append(x[0][i][0])
             second.append(x[0][i][1])
             third.append(x[0][i][2])
@@ -136,8 +127,8 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=30,
-                            workers=0,
-                            use_multiprocessing=False)
+                            workers=4,
+                            use_multiprocessing=True)
     else:
         model.fit_generator(train_data_generator,
                             epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
@@ -175,48 +166,25 @@ def _main():
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
-    if FLAGS.from_audio:
-        # Generate training data with real-time augmentation
-        train_data_gen = utils_data_audio.DataGenerator(rescale=1. / 255)
+    # Generate training  and validation data with real-time augmentation
+    train_data_gen = utils_data.DataGenerator(rescale=1. / 255)
+    val_data_gen = utils_data.DataGenerator(rescale=1. / 255)
 
-        # Iterator object containing training data to be generated batch by batch
-        train_generator = train_data_gen.flow_from_directory('train',
-                                                             shuffle=True,
-                                                             target_size=(img_height, img_width),
-                                                             batch_size=FLAGS.batch_size)
-
-        # Generate validation data with real-time augmentation
-        val_data_gen = utils_data_audio.DataGenerator(rescale=1. / 255)
-
-        # Iterator object containing validation data to be generated batch by batch
-        val_generator = val_data_gen.flow_from_directory('val',
-                                                         shuffle=False,
+    # Iterator object containing training and validation data to be generated batch by batch
+    train_generator = train_data_gen.flow_from_directory('train',
+                                                         shuffle=True,
                                                          target_size=(img_height, img_width),
                                                          batch_size=FLAGS.batch_size)
-    else:
-        # Generate training data with real-time augmentation
-        train_data_gen = utils_data.DataGenerator(rescale=1. / 255)
 
-        # Iterator object containing training data to be generated batch by batch
-        train_generator = train_data_gen.flow_from_directory('train',
-                                                             shuffle=True,
-                                                             target_size=(img_height, img_width),
-                                                             batch_size=FLAGS.batch_size)
-
-        # Generate validation data with real-time augmentation
-        val_data_gen = utils_data.DataGenerator(rescale=1. / 255)
-
-        # Iterator object containing validation data to be generated batch by batch
-        val_generator = val_data_gen.flow_from_directory('val',
-                                                         shuffle=False,
-                                                         target_size=(img_height, img_width),
-                                                         batch_size=FLAGS.batch_size)
+    val_generator = val_data_gen.flow_from_directory('val',
+                                                     shuffle=False,
+                                                     target_size=(img_height, img_width),
+                                                     batch_size=FLAGS.batch_size)
 
     # Check if the number of classes in data corresponds to the one specified
     assert train_generator.num_classes == FLAGS.num_classes, \
         " Not matching output dimensions in training data."
 
-    # Check if the number of classes in data corresponds to the one specified
     assert val_generator.num_classes == FLAGS.num_classes, \
         " Not matching output dimensions in validation data."
           

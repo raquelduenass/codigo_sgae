@@ -15,13 +15,12 @@ gflags.DEFINE_integer('power', 2, 'Type of value represented in spectrogram')
 gflags.DEFINE_float('overlap', 0.5, 'Time overlap among samples in demo')
 gflags.DEFINE_integer('wind_len', 5, 'Window length of temporal filtering')
 
-
 # Training parameters
 gflags.DEFINE_integer('n', 1, 'depth of network')
 gflags.DEFINE_integer('version', 2, 'ResNet block type')
 gflags.DEFINE_string('structure', 'complex', 'Parallel layers ("complex") or not ("simple")')
 gflags.DEFINE_boolean('from_audio', False, 'Input to the net from audio or image')
-gflags.DEFINE_integer('batch_size', 16, 'Batch size in training and evaluation')
+gflags.DEFINE_integer('batch_size', 32, 'Batch size in training and evaluation')
 gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
 gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
@@ -30,7 +29,7 @@ gflags.DEFINE_string('f_output', 'sigmoid', 'Output function')
 # Files
 gflags.DEFINE_string('experiment_root_directory', "./models/test_9", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "D:/rds/GitHub/data_SGAE/spec_google",
+gflags.DEFINE_string('data_path', "/home/rds/databases/spec_google",
                      'Folder containing the whole data set')
 gflags.DEFINE_string('demo_path', "../data_SGAE/mu_speak",
                      'Folder containing the demo data set')

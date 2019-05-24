@@ -71,46 +71,6 @@ def res_net_layer(inputs,
     return x
 
 
-def res_net(input_shape, depth):
-    """
-    Model based on single flow of layers based on ResNet architecture
-    # Arguments
-        input_shape (tensor): shape of input image tensor
-        depth (int): number of core convolution 2D layers
-    # Returns
-        model (Model): model instance
-    """
-    base_model, inputs = [], []
-
-    # Output dimension
-    if FLAGS.f_output == 'sigmoid':
-        num_classes = FLAGS.num_classes-1
-    else:
-        num_classes = FLAGS.num_classes
-
-    # Network architecture
-    if FLAGS.version == 1:
-        if (depth - 2) % 6 != 0:
-            raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
-        inputs = Input(shape=input_shape)
-        base_model = base_res_net_v1(inputs, depth)
-
-    elif FLAGS.version == 2:
-        if (depth - 2) % 9 != 0:
-            raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
-        inputs = Input(shape=input_shape)
-        base_model = base_res_net_v2(inputs, depth)
-
-    y = base_model.output
-    outputs = Dense(num_classes,
-                    activation=FLAGS.f_output,
-                    kernel_initializer='he_normal')(y)
-
-    # Instantiate model.
-    model = Model(inputs=inputs, outputs=outputs)
-    return model
-
-
 def base_res_net_v1(input_shape, depth):
     """ResNet Version 1 Model builder [a]
     Stacks of 2 x (3 x 3) Convolution2D-BN-ReLU
@@ -248,7 +208,7 @@ def base_res_net_v2(input_shape, depth):
     return model
 
 
-def comb_res_net(input_shape, depth):
+def res_net(input_shape, depth):
     """
     Model with shared layers based on ResNet architecture
     # Arguments
@@ -257,7 +217,7 @@ def comb_res_net(input_shape, depth):
     # Returns
         model (Model): model instance
     """
-    base_model, inputs, features = [], [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
+    base_model = []
 
     # Output dimension
     if FLAGS.f_output == 'sigmoid':
@@ -267,19 +227,32 @@ def comb_res_net(input_shape, depth):
 
     # Create simple model
     if FLAGS.version == 1:
+        if (depth - 2) % 6 != 0:
+            raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
         base_model = base_res_net_v1(input_shape, depth)
     elif FLAGS.version == 2:
+        if (depth - 2) % 9 != 0:
+            raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
         base_model = base_res_net_v2(input_shape, depth)
 
-    # Reuse model
-    for i in range(FLAGS.wind_len):
-        inputs[i] = Input(input_shape)
-        features[i] = base_model(inputs[i])
+    # Simple model architecture
+    if FLAGS.structure == 'simple':
+        inputs = Input(shape=input_shape)
+        y = base_model.output
 
-    union = Concatenate()(features)
+    # Parallel model architecture
+    elif FLAGS.structure == 'complex':
+        inputs, features = [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
+        # Reuse model
+        for i in range(FLAGS.wind_len):
+            inputs[i] = Input(input_shape)
+            features[i] = base_model(inputs[i])
 
+        y = Concatenate()(features)
+
+    # Model output
     outputs = Dense(num_classes,
                     activation=FLAGS.f_output,
-                    kernel_initializer='he_normal')(union)
+                    kernel_initializer='he_normal')(y)
     model = Model(inputs=inputs, outputs=outputs)
     return model

@@ -90,7 +90,7 @@ def compute_mel_gram(segment):
     :return ret: mel-spectrogram
     """
     n_fft = 1102  # 512
-    n_mel = 64  # 96
+    n_mel = FLAGS.img_height
     hop_len = 441  # 256
     n_sample = segment.shape[0]
     n_sample_fit = int(FLAGS.separation*FLAGS.sr)

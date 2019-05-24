@@ -356,6 +356,3 @@ def cross_val_create(path):
         utils.list_to_file([moments[i] for i in order[0:index4]],
                            os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
     return
-
-
-data_files('D:/rds/GitHub/data_sgae/spectrograms_google')
