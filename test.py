@@ -78,7 +78,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_6/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_9/weights_008.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))

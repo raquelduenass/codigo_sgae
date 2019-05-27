@@ -57,7 +57,7 @@ class DirectoryIterator(Iterator):
             dirs_file = os.path.join(FLAGS.experiment_root_directory, 'val_files.txt')
             labels_file = os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt')
         else:
-            dirs_file = os.path.join(FLAGS.experiment_rootdir, 'test_files.txt')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'test_files.txt')
             labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
 
         if FLAGS.from_audio:
@@ -135,11 +135,11 @@ class DirectoryIterator(Iterator):
         if FLAGS.structure == 'complex':
             for i in range(FLAGS.wind_len):
                 batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
-                                   for j in range(FLAGS.batch_size)]
+                                   for j in range(len(batch_x))]
 
             batch_x = np.expand_dims(np.array(batch_x), axis=4)
 
-            # TODO: ESTANDARIZAR A WIND_LEN
+            # TODO: STANDARDIZE TO WIND_LEN
             for i in range(len(index_array)):
                 batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
                               batch_x_wind[3][i], batch_x_wind[4][i]]
@@ -177,7 +177,6 @@ def load_many(self, j):
     # Arguments:
         self:
         j:
-        wind_len:
     # Return:
         images:
     """
@@ -185,7 +184,8 @@ def load_many(self, j):
     images = []
     for i in a:
         if j + i < 0:
-            x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) - i)])
+            # print("Max: "+str(len(self.file_names))+" Intenta cargar: "+str(len(self.file_names) + i))
+            x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
         elif j+i < len(self.file_names):
             x = np.load(FLAGS.data_path + self.file_names[int(j+i)])
         else:
@@ -203,7 +203,6 @@ def load_many_audio(self, j):
     # Arguments:
         self:
         j:
-        wind_len:
     # Return:
         images:
     """

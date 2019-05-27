@@ -3,13 +3,36 @@ import json
 import os
 import matplotlib.pyplot as plt
 import itertools
-
+from common_flags import FLAGS
 from keras.utils.generic_utils import Progbar
 from keras.models import model_from_json
 from sklearn.metrics import confusion_matrix
 
 
-def compute_predictions_and_gt(model, generator, steps,
+def many_generator(generator):
+    """
+    Provides the multiple network inputs from the batch data
+    """
+    # TODO: Standardize to FLAGS.wind_len
+    while True:
+        # for j in range(int(generator.samples/FLAGS.batch_size)):
+        # windows = [[]]*FLAGS.wind_len
+        first, second, third, forth, fifth = [], [], [], [], []
+        x = generator.next()
+        for i in range(len(x[0])):
+            # for j in range(FLAGS.wind_len):
+            # windows[j].append(x[0][i][j])
+            first.append(x[0][i][0])
+            second.append(x[0][i][1])
+            third.append(x[0][i][2])
+            forth.append(x[0][i][3])
+            fifth.append(x[0][i][4])
+        # Yield both images and their mutual label
+        yield [np.asarray(first), np.asarray(second), np.asarray(third),
+               np.asarray(forth), np.asarray(fifth)], x[1]
+
+
+def compute_predictions_and_gt(model, generator_init, steps,
                                verbose=1):
     """
     Generate predictions and associated ground truth for the input samples
@@ -43,7 +66,10 @@ def compute_predictions_and_gt(model, generator, steps,
     steps_done = 0
     all_outs = []
     all_steerings = []
-
+    if FLAGS.structure == 'simple':
+        generator = generator_init
+    else:
+        generator = many_generator(generator_init)
     if verbose == 1:
         progbar = Progbar(target=steps)
 

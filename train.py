@@ -66,10 +66,11 @@ def many_generator(generator):
     """
     # TODO: Standardize to FLAGS.wind_len
     while True:
+        # for j in range(int(generator.samples/FLAGS.batch_size)):
         # windows = [[]]*FLAGS.wind_len
         first, second, third, forth, fifth = [], [], [], [], []
         x = generator.next()
-        for i in range(FLAGS.batch_size):
+        for i in range(len(x[0])):
             # for j in range(FLAGS.wind_len):
             # windows[j].append(x[0][i][j])
             first.append(x[0][i][0])
@@ -127,7 +128,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=30,
-                            workers=4,
+                            workers=2,
                             use_multiprocessing=True)
     else:
         model.fit_generator(train_data_generator,
