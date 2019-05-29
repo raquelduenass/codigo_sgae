@@ -5,6 +5,7 @@ import keras
 import process_audio
 import process_label
 import librosa
+import pandas as pd
 from keras import backend as k
 from keras.preprocessing.image import Iterator, ImageDataGenerator
 from common_flags import FLAGS
@@ -26,25 +27,23 @@ class DataGenerator(ImageDataGenerator):
         return DirectoryIterator(directory, self, target_size=target_size,
                                  batch_size=batch_size, shuffle=shuffle, seed=seed, follow_links=follow_links)
 
+    def flow_from_dataframe(self, dataframe, directory=None, x_col="filename", y_col="class",
+                            target_size=(96, 173), classes=None, class_mode='categorical',
+                            batch_size=32, shuffle=True, seed=None, save_to_dir=None,
+                            save_prefix='', save_format='png', drop_duplicates=True):
+        return DataFrameIterator(dataframe, self, directory=None, x_col="filename", y_col="class",
+                                 classes=None, class_mode='categorical', batch_size=32,
+                                 shuffle=True, seed=None, save_to_dir=None, save_prefix='',
+                                 drop_duplicates=True)
 
-class DirectoryIterator(Iterator):
-    """
-    Class for managing data loading of images and labels
 
-    # Arguments
-       phase: training, validation or test stage
-       num_classes: Output dimension (number of classes).
-       image_data_generator: Image Generator.
-       target_size: tuple of integers, dimensions to resize input images to.
-       batch_size: The desired batch size
-       shuffle: Whether to shuffle data or not
-       seed: numpy seed to shuffle data
-       follow_links: Bool, whether to follow symbolic links or not
-    """
+class DataFrameIterator(Iterator):
+
+    # TODO: COMPLETE THE DATAFRAME CLASS
     def __init__(self, directory, image_data_generator,
                  target_size=(96, 173),
                  batch_size=32, shuffle=True, seed=None, follow_links=False):
-        
+
         self.image_data_generator = image_data_generator
         self.target_size = target_size
         self.follow_links = follow_links
@@ -71,6 +70,71 @@ class DirectoryIterator(Iterator):
             self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, labels_file, moments_file)
         else:
             self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
+
+        # Number of samples in data
+        self.samples = len(self.file_names)
+        self.num_classes = len(np.unique(self.ground_truth, axis=0))
+
+        # Check if data is empty
+        if self.samples == 0:
+            raise IOError("Did not find any data")
+
+        print('Found {} images belonging to {} classes.'.format(self.samples, FLAGS.num_classes))
+
+        super(DataFrameIterator, self).__init__(self.samples, batch_size, shuffle, seed)
+
+    # TODO: CHANGE DATA INTO DATAFRAME
+
+
+
+class DirectoryIterator(Iterator):
+    """
+    Class for managing data loading of images and labels
+
+    # Arguments
+       phase: training, validation or test stage
+       num_classes: Output dimension (number of classes).
+       image_data_generator: Image Generator.
+       target_size: tuple of integers, dimensions to resize input images to.
+       batch_size: The desired batch size
+       shuffle: Whether to shuffle data or not
+       seed: numpy seed to shuffle data
+       follow_links: Bool, whether to follow symbolic links or not
+    """
+    def __init__(self, directory, image_data_generator,
+                 target_size=(96, 173),
+                 batch_size=32, shuffle=True, seed=None, follow_links=False):
+        
+        self.image_data_generator = image_data_generator
+        self.target_size = target_size
+        self.follow_links = follow_links
+
+        # File of database for the phase
+        if directory == 'train':
+            data_file = os.path.join(FLAGS.experiment_root_directory, 'train.csv')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'train_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt')
+        elif directory == 'val':
+            data_file = os.path.join(FLAGS.experiment_root_directory, 'validation.csv')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'val_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt')
+        else:
+            data_file = os.path.join(FLAGS.experiment_root_directory, 'test.csv')
+            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'test_files.txt')
+            labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
+
+        if FLAGS.from_audio:
+            if directory == 'train':
+                moments_file = os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt')
+            elif directory == 'val':
+                moments_file = os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt')
+            else:
+                moments_file = os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt')
+
+            self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, labels_file, moments_file)
+        else:
+            # self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
+            self.file_names, self.ground_truth = cross_val_load_df(data_file)
         
         # Number of samples in data
         self.samples = len(self.file_names)
@@ -170,6 +234,23 @@ def cross_val_load(dirs_file, labels_file, moments_file=None):
         # np.array(labels_list, dtype=k.floatx())
     else:
         return dirs_list, labels_list
+
+
+def cross_val_load_df(data_file):
+    """
+    # Arguments:
+        data_file: csv file containing the name and ground truth of the samples
+    # Return:
+        dirs_list: samples names
+        moments_list:
+        labels_list: ground truth
+    """
+    data = pd.read_csv(data_file)
+    dirs_list = data['spec_name'].tolist()
+    labels_list = process_label.labels_to_number(data['ground_truth'].tolist())
+    labels_list = [np.array(i) for i in labels_list]
+
+    return dirs_list, labels_list
 
 
 def load_many(self, j):

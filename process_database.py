@@ -17,6 +17,7 @@ from scipy.io import wavfile
 from random import randint
 from common_flags import FLAGS
 from random import shuffle as sh
+import pandas as pd
 
 
 def data_and_labels(music_path, data_list, label_list, moments_list, label):
@@ -193,30 +194,6 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
     return
 
 
-def extract_spec_grams(data_path, save_path):
-    """
-    Creation of spectrograms from segments of the audio files
-    # Arguments:
-        data_path: folder containing the audio files
-        save_path: folder to be containing the spectrograms
-    """
-    for classes in os.listdir(data_path):
-        j = 0
-        for files in os.listdir(os.path.join(data_path, classes)):
-            file_path = os.path.join(data_path, classes, files)
-            if file_path.endswith('.wav') or file_path.endswith('.mp3'):
-                audio, sr = librosa.load(file_path)
-                audio = librosa.resample(audio, sr, FLAGS.sr)
-                set = list(np.arange(start=0, stop=librosa.get_duration(audio), step=FLAGS.separation))
-                set = [np.round(i, decimals=2) for i in set]
-                for i in range(len(set)):
-                    segment = audio[int(i * FLAGS.separation * FLAGS.sr):
-                                    int((i+1) * FLAGS.separation * FLAGS.sr)]
-                    mel = process_audio.compute_mel_gram(segment)
-                    np.save(os.path.join(save_path, classes, 'mel_'+str(j)+'.npy'), mel)
-                    j = j+1
-
-
 def data_files(data_path):
     """
     txt files are created
@@ -355,4 +332,86 @@ def cross_val_create(path):
                            os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
         utils.list_to_file([moments[i] for i in order[0:index4]],
                            os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
+    return
+
+
+def cross_val_create_df(path):
+    """
+    :param path: folder containing the data
+    :return: split of the data in train, validation and test sets
+    """
+
+    data = pd.read_csv(os.path.join(path, 'data.csv'))
+    audios = data['audio_name'].unique()
+
+    order = list(range(len(audios)))
+    sh(order)
+    order = np.asarray(order)
+    index4 = int(round(len(order) / 4))
+    index2 = int(round(len(order) / 2))
+
+    train_data = data[data['spec_name'] == audios[index2:]]
+    val_data = data[data['spec_name'] == audios[index4:index2]]
+    test_data = data[data['spec_name'] == audios[0:index4]]
+
+    # Create files of directories, labels and moments
+    train_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "train.csv"))
+    val_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "validation.csv"))
+    test_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "test.csv"))
+
+    if FLAGS.from_audio:
+        moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
+        utils.list_to_file([moments[i] for i in order[index2:]],
+                           os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
+        utils.list_to_file([moments[i] for i in order[index4:index2]],
+                           os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
+        utils.list_to_file([moments[i] for i in order[0:index4]],
+                           os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
+    return
+
+
+def create_df_database(data_path, save_path):
+    """
+    Creation of spectrograms from segments of the audio files
+    and creation of csv file with association of spectrogram
+    files, audio files and the ground truth label
+    # Arguments:
+        data_path: folder containing the audio files
+        save_path: folder to be containing the spectrograms
+    """
+    spec_names, labels, audio_names = [], [], []
+
+    for classes in os.listdir(data_path):
+        j = 0
+        class_path = os.path.join(data_path, classes)
+
+        for files in os.listdir(class_path):
+            audio_name = os.path.join(class_path, files)
+            print(audio_name)
+            audio, sr = librosa.load(audio_name)
+            audio = librosa.resample(audio, sr, FLAGS.sr)
+            length = librosa.get_duration(audio)
+            time_set = [np.round(i, decimals=2) for i in list(np.arange(start=0, stop=length, step=FLAGS.separation))]
+
+            for i in range(len(time_set)):
+                segment = audio[int(i * FLAGS.separation * FLAGS.sr):
+                                int((i + 1) * FLAGS.separation * FLAGS.sr)]
+                mel = process_audio.compute_mel_gram(segment)
+                spec_name = os.path.join(save_path, classes, 'mel_' + str(j) + '.npy')
+                np.save(spec_name, mel)
+                j = j + 1
+
+                audio_names.append(audio_name)
+                spec_names.append(spec_name)
+                labels.append(classes)
+
+    with open(os.path.join(save_path, 'data.csv'), mode='w') as csv_file:
+        fieldnames = ['spec_name', 'ground_truth', 'audio_name']
+
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(len(spec_names)):
+            writer.writerow({'spec_name': spec_names[i], 'ground_truth': labels[i], 'audio_name': audio_names[i]})
+
     return

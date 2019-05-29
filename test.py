@@ -4,13 +4,14 @@ import sys
 import utils
 import utils_data
 import numpy as np
+import process_label
 from sklearn import metrics
 from keras import backend as k
 from common_flags import FLAGS 
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M', 'MH', 'H', 'R']
+CLASSES = ['music', 'music_speech', 'speech', 'noise']
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
@@ -93,31 +94,45 @@ def _main():
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
     probabilities_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose=1)
-    
-    # Predicted probabilities
-    predicted_probabilities = np.max(probabilities_per_class, axis=-1)
-    # Predicted labels
-    predicted_labels = np.argmax(probabilities_per_class, axis=-1)
+
     # Real labels (ground truth)
     real_labels = np.argmax(ground_truth, axis=-1)
-    
-    # Evaluate predictions: Average accuracy and highest errors
-    print("-----------------------------------------------")
-    print("Evaluation:")
-    evaluation = evaluate_classification(predicted_probabilities, predicted_labels, real_labels)
-    print("-----------------------------------------------")
-    
-    # Save evaluation
-    utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
+
+    if FLAGS.f_output == 'sigmoid':
+        # Processing of probabilities when sigmoid
+        threshold = 0.4
+        predicted_labels = process_label.predict(probabilities_per_class, threshold)
+        real_labels = process_label.number_to_labels(real_labels, True)
+        # Evaluate predictions: Average accuracy and highest errors
+        print("-----------------------------------------------")
+        print("Evaluation:")
+        ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
+        print('Average accuracy = ', ave_accuracy)
+        print("-----------------------------------------------")
+    else:
+        # Predicted probabilities
+        predicted_probabilities = np.max(probabilities_per_class, axis=-1)
+        # Predicted labels
+        predicted_labels = np.argmax(probabilities_per_class, axis=-1)
+        # Evaluate predictions: Average accuracy and highest errors
+        print("-----------------------------------------------")
+        print("Evaluation:")
+        evaluation = evaluate_classification(predicted_probabilities, predicted_labels, real_labels)
+        print("-----------------------------------------------")
+        # Save evaluation
+        utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
+        real_labels = real_labels.tolist()
+        predicted_labels = predicted_labels.tolist()
 
     # Save predicted and real labels as a dictionary
-    labels_dict = {'predicted_labels': predicted_labels.tolist(),
-                   'real_labels': real_labels.tolist()}
-    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_rootdir,
+    labels_dict = {'probabilities': probabilities_per_class.tolist(),
+                   'predicted_labels': predicted_labels,
+                   'real_labels': real_labels}
+    utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'predicted_and_real_labels.json'))
                                                
     # Visualize confusion matrix                                           
-    utils.plot_confusion_matrix('test', FLAGS.experiment_rootdir, real_labels,
+    utils.plot_confusion_matrix('test', FLAGS.experiment_root_directory, real_labels,
                                 predicted_labels, CLASSES, normalize=True)
 
 

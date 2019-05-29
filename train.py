@@ -60,29 +60,6 @@ def get_model_res_net(img_height, img_width, weights_path):
     return model
 
 
-def many_generator(generator):
-    """
-    Provides the multiple network inputs from the batch data
-    """
-    # TODO: Standardize to FLAGS.wind_len
-    while True:
-        # for j in range(int(generator.samples/FLAGS.batch_size)):
-        # windows = [[]]*FLAGS.wind_len
-        first, second, third, forth, fifth = [], [], [], [], []
-        x = generator.next()
-        for i in range(len(x[0])):
-            # for j in range(FLAGS.wind_len):
-            # windows[j].append(x[0][i][j])
-            first.append(x[0][i][0])
-            second.append(x[0][i][1])
-            third.append(x[0][i][2])
-            forth.append(x[0][i][3])
-            fifth.append(x[0][i][4])
-        # Yield both images and their mutual label
-        yield [np.asarray(first), np.asarray(second), np.asarray(third),
-               np.asarray(forth), np.asarray(fifth)], x[1]
-
-
 def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     """
     Model training.
@@ -93,9 +70,9 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
        initial_epoch: Epoch from which training starts.
     """
     # Configure training process
-    model.compile(loss='mse',
+    model.compile(loss='categorical_crossentropy',  # mse
                   optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                  metrics=['mse'])
+                  metrics=['categorical_accuracy'])  # mse
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_root_directory, 'weights_{epoch:03d}.h5')
@@ -121,10 +98,10 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     callbacks = [write_best_model, save_model_and_loss, lr_reducer, lr_scheduler, tensor_board]
 
     if FLAGS.structure == 'complex':
-        model.fit_generator(many_generator(train_data_generator),
+        model.fit_generator(utils.many_generator(train_data_generator),
                             epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
                             callbacks=callbacks,
-                            validation_data=many_generator(val_data_generator),
+                            validation_data=utils.many_generator(val_data_generator),
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=30,

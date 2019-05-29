@@ -182,6 +182,15 @@ def join_labels(predicted, silence, lengths=None):
     return labels
 
 
+def predict(probabilities, threshold):
+    probabilities_fil = [[]]*len(probabilities)
+    for i, item in enumerate(probabilities):
+        probabilities_fil[i] = [1*(probabilities[i][j] >= threshold) for j in range(len(probabilities[i]))]
+
+    labels = number_to_labels(probabilities_fil)
+    return labels
+
+
 def separate_labels(labels, lengths):
     """
     # Arguments:
@@ -213,6 +222,33 @@ def labels_to_number(labels):
         dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
     numbers = list(map(dct.get, labels))
     return numbers
+
+
+def number_to_labels(numbers, real=False):
+    """
+    # Arguments:
+        labels: original ground truth
+    # Return:
+        numbers: output of the network according to its output function
+    """
+
+    if FLAGS.f_output == 'softmax' or real:
+        dct = {0: 'music', 1: 'music_speech', 2: 'speech', 3: 'noise'}
+        real_labels = list(map(dct.get, numbers))
+
+    else:
+        dct = {'music': [1, 0, 0], 'music_speech': [1, 1, 0],
+               'speech': [0, 1, 0], 'noise': [0, 0, 1],
+               'speech_noise': [0, 1, 1], 'music_noise': [1, 0, 1],
+               'music_speech_noise': [1, 1, 1], 'silence': [0, 0, 0]}
+        label_dct = {'music': 'music', 'music_speech': 'music_speech',
+                     'speech': 'speech', 'noise': 'noise',
+                     'speech_noise': 'speech', 'music_noise': 'music',
+                     'music_speech_noise': 'music_speech', 'silence': 'noise'}
+        labels = [list(dct.keys())[list(dct.values()).index(j)] for j in numbers]
+        real_labels = list(map(label_dct.get, labels))
+
+    return real_labels
 
 
 def visualize_output(outputs, labels, ground_truth):

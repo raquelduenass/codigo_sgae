@@ -121,7 +121,7 @@ def compute_predictions_and_gt(model, generator_init, steps,
                 np.squeeze(np.array([np.concatenate(steer) for steer in all_steerings]))
 
 
-def compute_predictions(model, generator, steps, verbose=0):
+def compute_predictions(model, generator_init, steps, verbose=0):
     """
     Generate predictions for the input samples
     from a data generator. The generator should return the same kind of data as
@@ -156,6 +156,11 @@ def compute_predictions(model, generator, steps, verbose=0):
 
     if verbose == 1:
         progbar = Progbar(target=steps)
+
+    if FLAGS.structure == 'simple':
+        generator = generator_init
+    else:
+        generator = many_generator(generator_init)
 
     while steps_done < steps:
         generator_output = next(generator)
