@@ -305,7 +305,11 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
     plt.yticks(tick_marks, classes, rotation=45)
 
     if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        a = cm.sum(axis=1)[:, np.newaxis]
+        for i in range(len(a)):
+            if a[i] == 0:
+                a[i] = 1
+        cm = cm.astype('float') / a
 
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, float('%.3f' % (cm[i, j])),

@@ -27,14 +27,14 @@ class DataGenerator(ImageDataGenerator):
         return DirectoryIterator(directory, self, target_size=target_size,
                                  batch_size=batch_size, shuffle=shuffle, seed=seed, follow_links=follow_links)
 
-    def flow_from_dataframe(self, dataframe, directory=None, x_col="filename", y_col="class",
-                            target_size=(96, 173), classes=None, class_mode='categorical',
-                            batch_size=32, shuffle=True, seed=None, save_to_dir=None,
-                            save_prefix='', save_format='png', drop_duplicates=True):
-        return DataFrameIterator(dataframe, self, directory=None, x_col="filename", y_col="class",
-                                 classes=None, class_mode='categorical', batch_size=32,
-                                 shuffle=True, seed=None, save_to_dir=None, save_prefix='',
-                                 drop_duplicates=True)
+    # def flow_from_dataframe(self, dataframe, directory=None, x_col="filename", y_col="class",
+    #                         target_size=(96, 173), classes=None, class_mode='categorical',
+    #                         batch_size=32, shuffle=True, seed=None, save_to_dir=None,
+    #                         save_prefix='', save_format='png', drop_duplicates=True):
+    #     return DataFrameIterator(dataframe, self, directory=None, x_col="filename", y_col="class",
+    #                              classes=None, class_mode='categorical', batch_size=32,
+    #                              shuffle=True, seed=None, save_to_dir=None, save_prefix='',
+    #                              drop_duplicates=True)
 
 
 class DataFrameIterator(Iterator):
@@ -133,8 +133,8 @@ class DirectoryIterator(Iterator):
 
             self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, labels_file, moments_file)
         else:
-            # self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
-            self.file_names, self.ground_truth = cross_val_load_df(data_file)
+            self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
+            # self.file_names, self.ground_truth = cross_val_load_df(data_file)
         
         # Number of samples in data
         self.samples = len(self.file_names)

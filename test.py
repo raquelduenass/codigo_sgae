@@ -79,7 +79,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_9/weights_008.h5')
+    weights_load_path = os.path.abspath('./models/test_10/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -100,9 +100,8 @@ def _main():
 
     if FLAGS.f_output == 'sigmoid':
         # Processing of probabilities when sigmoid
-        threshold = 0.4
-        predicted_labels = process_label.predict(probabilities_per_class, threshold)
-        real_labels = process_label.number_to_labels(real_labels, True)
+        predicted_labels = np.argmax(process_label.predict(probabilities_per_class, FLAGS.threshold), axis=-1).tolist()
+
         # Evaluate predictions: Average accuracy and highest errors
         print("-----------------------------------------------")
         print("Evaluation:")
@@ -112,22 +111,23 @@ def _main():
     else:
         # Predicted probabilities
         predicted_probabilities = np.max(probabilities_per_class, axis=-1)
+
         # Predicted labels
-        predicted_labels = np.argmax(probabilities_per_class, axis=-1)
+        predicted_labels = np.argmax(probabilities_per_class, axis=-1).tolist()
+
         # Evaluate predictions: Average accuracy and highest errors
         print("-----------------------------------------------")
         print("Evaluation:")
         evaluation = evaluate_classification(predicted_probabilities, predicted_labels, real_labels)
         print("-----------------------------------------------")
+
         # Save evaluation
         utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
-        real_labels = real_labels.tolist()
-        predicted_labels = predicted_labels.tolist()
 
     # Save predicted and real labels as a dictionary
     labels_dict = {'probabilities': probabilities_per_class.tolist(),
                    'predicted_labels': predicted_labels,
-                   'real_labels': real_labels}
+                   'real_labels': real_labels.tolist()}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'predicted_and_real_labels.json'))
                                                

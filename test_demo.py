@@ -10,7 +10,7 @@ from common_flags import FLAGS
 
 # Constants
 TEST_PHASE = 1
-CLASSES = ['M', 'MH', 'H', 'R']
+CLASSES = ['music', 'music_speech', 'speech', 'noise']
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
@@ -32,7 +32,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_6/weights_010.h5')
+    weights_load_path = os.path.abspath('./models/test_10/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -47,12 +47,6 @@ def _main():
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
     prob_per_class = utils.compute_predictions(
             model, test_generator, nb_batches, verbose=1)
-    
-    # Predicted labels
-    classes = [CLASSES[i] for i in np.argmax(prob_per_class, axis=-1)]
-    predicted_labels = process_label.join_labels(classes, test_generator.silence_labels,
-                                                 test_generator.files_length)
-    probabilities = process_label.separate_labels(prob_per_class, test_generator.files_length)
 
     # Real labels
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
@@ -61,21 +55,30 @@ def _main():
         real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
         real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
-    # Class softening
-    soft_labels = process_label.soft_max(predicted_labels, len(test_generator.files_length))
+    # Class correspondence
+    if FLAGS.f_output == 'sigmoid':
+        predicted_labels = process_label.predict(prob_per_class, FLAGS.threshold)
+    else:
+        predicted_labels = np.argmax(prob_per_class, axis=-1).tolist()
+
+    predicted_labels = process_label.separate_labels(predicted_labels, test_generator.files_length)
+
+    # Temporal filtering
+    if FLAGS.structure == 'simple':
+        predicted_labels = process_label.soft_max(predicted_labels, len(test_generator.file_names))
 
     # Save predicted and softened labels as a dictionary
     labels_dict = {'predicted_labels': predicted_labels,
-                   'soft_labels': soft_labels}
+                   'probabilities': prob_per_class}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'demo_predicted_and_soft_labels.json'))
 
     # Metrics and boundaries of music
     for j in range(len(test_generator.files_length)):
         print('File: '+str(test_generator.file_names[j]))
-        process_label.show_metrics(real_labels[j], predicted_labels[j], soft_labels[j])
-        process_label.show_detections(soft_labels[j])
-        process_label.visualize_output(soft_labels[j], CLASSES, probabilities[j])
+        process_label.show_metrics(real_labels[j], predicted_labels[j])
+        process_label.show_detections(predicted_labels[j])
+        process_label.visualize_output(predicted_labels[j], CLASSES, real_labels[j])
 
 
 def main(argv):

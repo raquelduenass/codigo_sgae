@@ -21,17 +21,18 @@ gflags.DEFINE_integer('version', 2, 'ResNet block type')
 gflags.DEFINE_string('structure', 'complex', 'Parallel layers ("complex") or not ("simple")')
 gflags.DEFINE_boolean('from_audio', False, 'Input to the net from audio or image')
 gflags.DEFINE_integer('batch_size', 32, 'Batch size in training and evaluation')
-gflags.DEFINE_integer('epochs', 15, 'Number of epochs for training')
+gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
 gflags.DEFINE_integer('initial_epoch', 4, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
 gflags.DEFINE_string('f_output', 'sigmoid', 'Output function')
+gflags.DEFINE_float('threshold', 0.4, 'Minimum value for the sigmoid output to be active')
 
 # Files
-gflags.DEFINE_string('experiment_root_directory', "./models/test_9", 'Folder '
+gflags.DEFINE_string('experiment_root_directory', "./models/test_10", 'Folder '
                      ' containing all the logs, model weights and results')
 gflags.DEFINE_string('data_path', "/home/rds/databases/spec_google",
                      'Folder containing the whole data set')
-gflags.DEFINE_string('demo_path', "../data_SGAE/mu_speak",
+gflags.DEFINE_string('demo_path', "/home/rds/databases/mu_speak",
                      'Folder containing the demo data set')
 gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
                      ' to be processed')

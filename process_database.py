@@ -340,33 +340,38 @@ def cross_val_create_df(path):
     :param path: folder containing the data
     :return: split of the data in train, validation and test sets
     """
+    val_data = pd.DataFrame()
+    test_data = pd.DataFrame()
+    train_data = pd.DataFrame()
 
-    data = pd.read_csv(os.path.join(path, 'data.csv'))
-    audios = data['audio_name'].unique()
+    for classes in os.listdir(path):
 
-    order = list(range(len(audios)))
-    sh(order)
-    order = np.asarray(order)
-    index4 = int(round(len(order) / 4))
-    index2 = int(round(len(order) / 2))
+        data = pd.read_csv(os.path.join(path, classes, 'data.csv'))
+        audios = data['audio_name'].unique()
 
-    train_data = data[data['spec_name'] == audios[index2:]]
-    val_data = data[data['spec_name'] == audios[index4:index2]]
-    test_data = data[data['spec_name'] == audios[0:index4]]
+        order = list(range(len(audios)))
+        sh(order)
+        order = np.asarray(order)
+        index4 = int(round(len(order) / 4))
+        index2 = int(round(len(order) / 2))
+
+        val_data.append(data[data['spec_name'] == audios[index4:index2]])
+        test_data.append(data[data['spec_name'] == audios[0:index4]])
+        train_data.append(data[data['spec_name'] == audios[index2:]])
 
     # Create files of directories, labels and moments
     train_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "train.csv"))
     val_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "validation.csv"))
     test_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "test.csv"))
 
-    if FLAGS.from_audio:
-        moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
-        utils.list_to_file([moments[i] for i in order[index2:]],
-                           os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
-        utils.list_to_file([moments[i] for i in order[index4:index2]],
-                           os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
-        utils.list_to_file([moments[i] for i in order[0:index4]],
-                           os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
+    # if FLAGS.from_audio:
+    #     moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
+    #     utils.list_to_file([moments[i] for i in order[index2:]],
+    #                        os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
+    #     utils.list_to_file([moments[i] for i in order[index4:index2]],
+    #                        os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
+    #     utils.list_to_file([moments[i] for i in order[0:index4]],
+    #                        os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
     return
 
 
@@ -379,15 +384,14 @@ def create_df_database(data_path, save_path):
         data_path: folder containing the audio files
         save_path: folder to be containing the spectrograms
     """
-    spec_names, labels, audio_names = [], [], []
 
     for classes in os.listdir(data_path):
+        spec_names, labels, audio_names = [], [], []
         j = 0
         class_path = os.path.join(data_path, classes)
 
         for files in os.listdir(class_path):
             audio_name = os.path.join(class_path, files)
-            print(audio_name)
             audio, sr = librosa.load(audio_name)
             audio = librosa.resample(audio, sr, FLAGS.sr)
             length = librosa.get_duration(audio)
@@ -405,13 +409,12 @@ def create_df_database(data_path, save_path):
                 spec_names.append(spec_name)
                 labels.append(classes)
 
-    with open(os.path.join(save_path, 'data.csv'), mode='w') as csv_file:
-        fieldnames = ['spec_name', 'ground_truth', 'audio_name']
+        with open(os.path.join(save_path, classes, 'data.csv'), mode='w') as csv_file:
+            fieldnames = ['spec_name', 'ground_truth', 'audio_name']
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
 
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i in range(len(spec_names)):
-            writer.writerow({'spec_name': spec_names[i], 'ground_truth': labels[i], 'audio_name': audio_names[i]})
+            for i in range(len(spec_names)):
+                writer.writerow({'spec_name': spec_names[i], 'ground_truth': labels[i], 'audio_name': audio_names[i]})
 
     return
