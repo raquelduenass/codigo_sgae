@@ -5,7 +5,6 @@ from common_flags import FLAGS
 
 def fade_in_out(segment, sr_music):
     """
-
     :param segment: audio sequence
     :param sr_music: sample rate of the audios
     :return fade: fade-in transition
@@ -32,14 +31,12 @@ def fade_in_out(segment, sr_music):
 
 def separate_many_audio(self, index_array):
     """
-
     :param self:
     :param index_array:
     :return segments:
     """
     segments = []
     actual_file = 0
-
     # Identify audio to classify
     for j in range(-len(self.files_length) + 1, 1):
         if index_array[0] < self.files_length[-j]:
@@ -83,27 +80,27 @@ def separate_many_audio(self, index_array):
     return segments
 
 
-def compute_mel_gram(segment):
+def compute_mel_gram(segment, separation):
     """
     Computation of the mel-spectrogram of an audio sequence
     :param segment: audio fragment from which extracting the mel-spectrogram
+    :param separation:
     :return ret: mel-spectrogram
     """
     n_fft = 1102  # 512
-    n_mel = FLAGS.img_height
+    n_mel = 64  # FLAGS.img_height
     hop_len = 441  # 256
     n_sample = segment.shape[0]
-    n_sample_fit = int(FLAGS.separation*FLAGS.sr)
+    n_sample_fit = int(separation*22050)
 
     if n_sample < n_sample_fit:  # if too short
-        src = np.concatenate([segment, np.zeros((int(FLAGS.separation*FLAGS.sr) - n_sample,))])
+        src = np.concatenate([segment, np.zeros((int(separation*22050) - n_sample,))])
     elif n_sample > n_sample_fit:  # if too long
         src = segment[int((n_sample-n_sample_fit)/2):int((n_sample+n_sample_fit)/2)]
     else:
         src = segment
-    mel = librosa.feature.melspectrogram(
-            y=src, sr=FLAGS.sr, hop_length=hop_len,
-            n_fft=n_fft, n_mels=n_mel, power=FLAGS.power)
+    mel = librosa.feature.melspectrogram(y=src, sr=22050, hop_length=hop_len,
+                                         n_fft=n_fft, n_mels=n_mel, power=2)  # FLAGS.power)
 
     ret = librosa.power_to_db(mel)
     return ret

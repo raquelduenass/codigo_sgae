@@ -40,7 +40,7 @@ def show_detections(labels):
         separation:
         overlap:
     """
-    music_pos, music_dur = counting(labels, 'M')
+    music_pos, music_dur = counting(labels, 'music')
     print('Music detected in:')
     for i in range(len(music_pos)):
         if FLAGS.overlap == 0:
@@ -269,8 +269,9 @@ def visualize_output(outputs, labels, ground_truth):
 
     plt.subplot(211)
     t = np.arange(0.0, duration, distance)
-    for i in range(len(outputs)):
-        plt.plot(t, outputs[i], label=labels[i])
+    # for i in range(len(outputs)):
+    #    plt.plot(t, outputs[i], label=labels[i])
+    plt.fill_between(t, outputs)
     plt.title('CNN output')
 
     le = preprocessing.LabelEncoder()
@@ -279,8 +280,9 @@ def visualize_output(outputs, labels, ground_truth):
     ground_truth = list(encoded.T)
 
     plt.subplot(212)
-    for i in range(len(ground_truth)):
-        plt.plot(t, ground_truth[i], label=labels[i])
+    # for i in range(len(ground_truth)):
+    #     plt.plot(t, ground_truth[i], label=labels[i])
+    plt.fill_between(t, ground_truth)
     plt.title('Ground truth')
     plt.subplots_adjust(top=0.92, bottom=0.08, hspace=0.5)
     plt.show()
