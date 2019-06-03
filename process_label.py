@@ -7,7 +7,7 @@ from sklearn import preprocessing
 from common_flags import FLAGS
 
 
-def show_metrics(real, predicted, soft):
+def show_metrics(real, predicted, soft=None):
     """
     Printing of the main metrics to check the performance of the system
     # Arguments:
@@ -25,10 +25,12 @@ def show_metrics(real, predicted, soft):
     print('F-score before softening= ', metrics.f1_score(real, predicted, average='weighted'))
 
     # Accuracy after softening
-    print('Average accuracy after softening= ', metrics.accuracy_score(real, soft))
-    print('Precision after softening= ', metrics.precision_score(real, soft, average='weighted'))
-    print('Recall after softening= ', metrics.recall_score(real, soft, average='weighted'))
-    print('F-score after softening= ', metrics.f1_score(real, soft, average='weighted'))
+    if soft is not None:
+        print('Average accuracy after softening= ', metrics.accuracy_score(real, soft))
+        print('Precision after softening= ', metrics.precision_score(real, soft, average='weighted'))
+        print('Recall after softening= ', metrics.recall_score(real, soft, average='weighted'))
+        print('F-score after softening= ', metrics.f1_score(real, soft, average='weighted'))
+
     return
 
 
