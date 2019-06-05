@@ -46,14 +46,19 @@ def _main():
     n_samples = test_generator.samples
     nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
     prob_per_class = utils.compute_predictions(
-            model, test_generator, nb_batches, verbose=1)
+        model, test_generator, nb_batches, verbose=1)
 
     # Real labels
+    # TODO: Adapt labels from created demo files
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
-    real_labels = [[]] * len(test_generator.files_length)
-    for j in range(len(test_generator.files_length)):
-        real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
-        real_labels[j] = [CLASSES[int(i)] for i in real[j]]
+    real = process_label.labels_for_demo(real)
+    real_labels = []
+    for i in range(len(real)):
+        real_labels.append(process_label.labels_to_number(real[i]))
+    # real_labels = [[]] * len(test_generator.files_length)
+    # for j in range(len(test_generator.files_length)):
+    #     real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
+    #     real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
     # Class correspondence
     if FLAGS.f_output == 'sigmoid':
@@ -69,16 +74,20 @@ def _main():
 
     # Save predicted and softened labels as a dictionary
     labels_dict = {'predicted_labels': predicted_labels,
-                   'probabilities': prob_per_class}
+                   'real_labels': real_labels}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'demo_predicted_and_soft_labels.json'))
+    flat_real = [item for sublist in real_labels for item in sublist]
+    flat_predicted = [item for sublist in predicted_labels for item in sublist]
+    utils.plot_confusion_matrix('demo', FLAGS.experiment_root_directory, flat_real,
+                                flat_predicted, CLASSES, normalize=True)
 
     # Metrics and boundaries of music
     for j in range(len(test_generator.files_length)):
         print('File: '+str(test_generator.file_names[j]))
         process_label.show_metrics(real_labels[j], predicted_labels[j])
         process_label.show_detections(predicted_labels[j])
-        process_label.visualize_output(predicted_labels[j], CLASSES, real_labels[j])
+        # process_label.visualize_output(predicted_labels[j], CLASSES, real_labels[j])
 
 
 def main(argv):

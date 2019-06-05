@@ -6,7 +6,6 @@ from keras.utils import to_categorical
 from sklearn import preprocessing
 from common_flags import FLAGS
 
-
 def show_metrics(real, predicted, soft=None):
     """
     Printing of the main metrics to check the performance of the system
@@ -42,6 +41,7 @@ def show_detections(labels):
         separation:
         overlap:
     """
+    labels = number_to_labels(labels)
     music_pos, music_dur = counting(labels, 'music')
     print('Music detected in:')
     for i in range(len(music_pos)):
@@ -290,3 +290,13 @@ def visualize_output(outputs, labels, ground_truth):
     plt.show()
 
     return
+
+
+def labels_for_demo(real):
+
+    labels = [real[i].split("', '") for i in range(len(real))]
+    for i in range(len(labels)):
+        labels[i][0] = labels[i][0].split("['")[1]
+        labels[i][-1] = labels[i][-1].split("']")[0]
+
+    return labels

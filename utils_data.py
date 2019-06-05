@@ -122,10 +122,7 @@ class DirectoryIterator(Iterator):
                 x = self.image_data_generator.standardize(x)
                 x = self.image_data_generator.random_transform(x)
             else:
-                if FLAGS.from_audio:
-                    x = load_many_audio(self, j)
-                else:
-                    x = load_many(self, j)
+                x = load_many(self, j)
 
             batch_x.append(x)
             batch_y_p.append(self.ground_truth[j])
@@ -203,45 +200,27 @@ def load_many(self, j):
     a = np.arange(start=(1-FLAGS.wind_len)/2, stop=(FLAGS.wind_len-1)/2+1)
     images = []
     for i in a:
-        if j + i < 0:
-            # print("Max: "+str(len(self.file_names))+" Intenta cargar: "+str(len(self.file_names) + i))
-            x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
-        elif j+i < len(self.file_names):
-            x = np.load(FLAGS.data_path + self.file_names[int(j+i)])
+        if FLAGS.from_audio:
+            if j + i < 0:
+                segment, sr = librosa.load(self.file_names[int(len(self.file_names) - i)],
+                                           offset=self.moments[int(len(self.file_names) - i)],
+                                           duration=FLAGS.separation)
+            elif j + i < len(self.file_names):
+                segment, sr = librosa.load(self.file_names[int(j + i)],
+                                           offset=self.moments[int(j + i)],
+                                           duration=FLAGS.separation)
+            else:
+                segment, sr = librosa.load(self.file_names[int(i)],
+                                           offset=self.moments[int(i)],
+                                           duration=FLAGS.separation)
+            x = process_audio.compute_mel_gram(segment)
         else:
-            x = np.load(FLAGS.data_path + self.file_names[int(i)])
-        # Data augmentation
-        x = self.image_data_generator.standardize(x)
-        x = self.image_data_generator.random_transform(x)
-        images.append(x)
-
-    return images
-
-
-def load_many_audio(self, j):
-    """
-    # Arguments:
-        self:
-        j:
-    # Return:
-        images:
-    """
-    a = np.arange(start=(1-FLAGS.wind_len)/2, stop=(FLAGS.wind_len-1)/2+1)
-    images = []
-    for i in a:
-        if j + i < 0:
-            segment, sr = librosa.load(self.file_names[int(len(self.file_names) - i)],
-                                       offset=self.moments[int(len(self.file_names) - i)],
-                                       duration=FLAGS.separation)
-        elif j+i < len(self.file_names):
-            segment, sr = librosa.load(self.file_names[int(j+i)],
-                                       offset=self.moments[int(j+i)],
-                                       duration=FLAGS.separation)
-        else:
-            segment, sr = librosa.load(self.file_names[int(i)],
-                                       offset=self.moments[int(i)],
-                                       duration=FLAGS.separation)
-        x = process_audio.compute_mel_gram(segment)
+            if j + i < 0:
+                x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
+            elif j+i < len(self.file_names):
+                x = np.load(FLAGS.data_path + self.file_names[int(j+i)])
+            else:
+                x = np.load(FLAGS.data_path + self.file_names[int(i)])
         # Data augmentation
         x = self.image_data_generator.standardize(x)
         x = self.image_data_generator.random_transform(x)

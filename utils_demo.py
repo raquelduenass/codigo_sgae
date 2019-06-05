@@ -90,9 +90,14 @@ class DirectoryIterator(Iterator):
         parallel
         # Returns: The next batch of images and categorical labels.
         """
-
         # Extract segments of all the files
-        segments = process_audio.separate_many_audio(self, index_array)
+        if FLAGS.structure == 'simple':
+            segments = process_audio.separate_many_audio(self, index_array)
+        else:
+            segments = [[]]*FLAGS.wind_len
+            a = np.arange(start=(1 - FLAGS.wind_len) / 2, stop=(FLAGS.wind_len - 1) / 2 + 1)
+            for i, j in enumerate(a):
+                segments[i] = process_audio.separate_many_audio(self, index_array+j)
 
         # Initialize batches and indexes
         batch_x, batch_x_wind = [], [[]]*FLAGS.wind_len
@@ -114,14 +119,25 @@ class DirectoryIterator(Iterator):
 
             for i in range(FLAGS.wind_len):
                 batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
-                                   for j in range(FLAGS.batch_size)]
+                                   for j in range(len(index_array))]
 
             batch_x = np.expand_dims(np.array(batch_x), axis=4)
 
             for i in range(len(index_array)):
-                batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
-                              batch_x_wind[3][i], batch_x_wind[4][i]]
+                batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
         else:
             batch_x = np.expand_dims(np.array(batch_x), axis=3)
     
         return batch_x
+
+
+def load_many(self, segments, j):
+    images = []
+    for i in range(FLAGS.wind_len):
+        x = process_audio.compute_mel_gram(segments[i][j], FLAGS.separation)
+
+        # Data augmentation
+        x = self.image_data_generator.standardize(x)
+        x = self.image_data_generator.random_transform(x)
+        images.append(x)
+    return images

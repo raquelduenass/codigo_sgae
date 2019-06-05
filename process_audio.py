@@ -69,13 +69,22 @@ def separate_many_audio(self, index_array):
                 segments.append(audio[int((j - minus) * FLAGS.overlap * FLAGS.sr):
                                       int(((j - minus) * FLAGS.overlap + FLAGS.separation) * FLAGS.sr)])
             else:  # Change of audio file
-                minus = j
-                actual_file = actual_file + 1
-                audio, sr_old = librosa.load(self.file_names[actual_file],
-                                             duration=(self.batch_size - j) * FLAGS.overlap + FLAGS.separation)
-                audio = librosa.resample(audio, sr_old, FLAGS.sr)
-                real_duration = librosa.get_duration(audio)
-                segments.append(audio[0:int(FLAGS.separation * FLAGS.sr)])
+                if actual_file +1 < len(self.file_names):
+                    minus = j
+                    actual_file = actual_file + 1
+                    audio, sr_old = librosa.load(self.file_names[actual_file],
+                                                 duration=(self.batch_size - j) * FLAGS.overlap + FLAGS.separation)
+                    audio = librosa.resample(audio, sr_old, FLAGS.sr)
+                    real_duration = librosa.get_duration(audio)
+                    segments.append(audio[0:int(FLAGS.separation * FLAGS.sr)])
+
+                else:  # No more audio files: we repeat the last spectrograms
+                    minus = j + 1
+                    audio, sr_old = librosa.load(self.file_names[actual_file],
+                                                 duration=(self.batch_size - j) * FLAGS.overlap + FLAGS.separation)
+                    audio = librosa.resample(audio, sr_old, FLAGS.sr)
+                    real_duration = librosa.get_duration(audio)
+                    segments.append(audio[0:int(FLAGS.separation * FLAGS.sr)])
 
     return segments
 

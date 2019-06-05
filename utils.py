@@ -16,7 +16,8 @@ def many_generator(generator):
     while True:
         # for j in range(int(generator.samples/FLAGS.batch_size)):
         d = {}
-        x = generator.next()
+        x = next(generator)
+        # x = generator.next()
         for i in range(FLAGS.wind_len):
             d['window{0}'.format(i)] = []
 
@@ -30,6 +31,30 @@ def many_generator(generator):
 
         # Yield both images and their mutual label
         yield windows, x[1]
+
+
+def many_generator_demo(generator):
+    """
+    Provides the multiple network inputs from the batch data
+    """
+    # while True:
+    for j in range(int(np.ceil(generator.samples/FLAGS.batch_size))):
+        d = {}
+        x = next(generator)
+
+        for i in range(FLAGS.wind_len):
+            d['window{0}'.format(i)] = []
+
+        for i in range(len(x)):
+            for j in range(FLAGS.wind_len):
+                d['window{0}'.format(j)].append(x[i][j])
+
+        for i in range(FLAGS.wind_len):
+            d['window{0}'.format(i)] = np.asarray(d['window{0}'.format(i)])
+        windows = [d['window{0}'.format(i)] for i in range(FLAGS.wind_len)]
+
+        # Yield input images
+        yield windows
 
 
 def compute_predictions_and_gt(model, generator_init, steps,
@@ -160,7 +185,7 @@ def compute_predictions(model, generator_init, steps, verbose=0):
     if FLAGS.structure == 'simple':
         generator = generator_init
     else:
-        generator = many_generator(generator_init)
+        generator = many_generator_demo(generator_init)
 
     while steps_done < steps:
         generator_output = next(generator)
@@ -320,5 +345,5 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
     plt.xlabel('Predicted label')
     if phase == 'test':
         plt.savefig(os.path.join(path_to_results, "confusion.png"))
-    elif phase == 'outer_test':
-        plt.savefig(os.path.join(path_to_results, "outer_confusion.png"))
+    elif phase == 'demo':
+        plt.savefig(os.path.join(path_to_results, "demo_confusion.png"))
