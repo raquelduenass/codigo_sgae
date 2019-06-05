@@ -99,25 +99,29 @@ class DirectoryIterator(Iterator):
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            x = process_audio.compute_mel_gram(segments[i])
-            if process_audio.silence_detection(x):
-                self.silence_labels[j] = 'S'
-            else:
-                self.silence_labels[j] = ''
+            if FLAGS.structure == 'simple':
+                x = process_audio.compute_mel_gram(segments[i], FLAGS.separation)
                 # Data augmentation
                 x = self.image_data_generator.random_transform(x)
                 x = self.image_data_generator.standardize(x)
-                batch_x.append(x)
+
+            else:
+                x = load_many(self, segments, i)
+            batch_x.append(x)
 
         # Build batch of labels
-        for i in range(FLAGS.wind_len):
-            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
-                               for j in range(FLAGS.batch_size)]
+        if FLAGS.structure == 'complex':
 
-        batch_x = np.expand_dims(np.array(batch_x), axis=4)
+            for i in range(FLAGS.wind_len):
+                batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                                   for j in range(FLAGS.batch_size)]
 
-        for i in range(len(index_array)):
-            batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
-                          batch_x_wind[3][i], batch_x_wind[4][i]]
+            batch_x = np.expand_dims(np.array(batch_x), axis=4)
+
+            for i in range(len(index_array)):
+                batch_x[i] = [batch_x_wind[0][i], batch_x_wind[1][i], batch_x_wind[2][i],
+                              batch_x_wind[3][i], batch_x_wind[4][i]]
+        else:
+            batch_x = np.expand_dims(np.array(batch_x), axis=3)
     
         return batch_x

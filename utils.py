@@ -13,23 +13,23 @@ def many_generator(generator):
     """
     Provides the multiple network inputs from the batch data
     """
-    # TODO: Standardize to FLAGS.wind_len
     while True:
         # for j in range(int(generator.samples/FLAGS.batch_size)):
-        # windows = [[]]*FLAGS.wind_len
-        first, second, third, forth, fifth = [], [], [], [], []
+        d = {}
         x = generator.next()
+        for i in range(FLAGS.wind_len):
+            d['window{0}'.format(i)] = []
+
         for i in range(len(x[0])):
-            # for j in range(FLAGS.wind_len):
-            # windows[j].append(x[0][i][j])
-            first.append(x[0][i][0])
-            second.append(x[0][i][1])
-            third.append(x[0][i][2])
-            forth.append(x[0][i][3])
-            fifth.append(x[0][i][4])
+            for j in range(FLAGS.wind_len):
+                d['window{0}'.format(j)].append(x[0][i][j])
+
+        for i in range(FLAGS.wind_len):
+            d['window{0}'.format(i)] = np.asarray(d['window{0}'.format(i)])
+        windows = [d['window{0}'.format(i)] for i in range(FLAGS.wind_len)]
+
         # Yield both images and their mutual label
-        yield [np.asarray(first), np.asarray(second), np.asarray(third),
-               np.asarray(forth), np.asarray(fifth)], x[1]
+        yield windows, x[1]
 
 
 def compute_predictions_and_gt(model, generator_init, steps,
