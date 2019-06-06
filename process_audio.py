@@ -15,12 +15,15 @@ def fade_in_out(segment, sr_music):
     separations = 10
     n_samples = int(librosa.get_duration(segment) * sr_music)
     fade = segment[0:int(fade_length / separations)] * factor
+
     for i in range(separations - 1):
         fade = np.append(fade, segment[int((i + 1) * fade_length / separations):
                                        int((i + 2) * fade_length / separations)] * factor)
         fade = fade[0:fade_length]
         factor += 1 / separations
+
     rest = segment[fade_length:n_samples - fade_length]
+
     for i in range(separations):
         rest = np.append(fade, segment[int(n_samples - (separations - i) * fade_length / 10):
                                        int(n_samples - (separations - i - 1) * fade_length / 10)] * factor)

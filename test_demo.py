@@ -49,12 +49,18 @@ def _main():
         model, test_generator, nb_batches, verbose=1)
 
     # Real labels
-    # TODO: Adapt labels from created demo files
+    # TODO: Adapt labels from created demo files to corresponding time
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real = process_label.labels_for_demo(real)
-    real_labels = []
+    real_labels, complete_labels = [], []
     for i in range(len(real)):
         real_labels.append(process_label.labels_to_number(real[i]))
+
+    print(str(n_samples))
+    print(str(sum([len(real_labels[i]) for i in range(len(real_labels))])))
+
+    for i in range(len(real_labels)/FLAGS.overlap):
+        complete_labels.append(real_labels[int(round(i*FLAGS.overlap))])
     # real_labels = [[]] * len(test_generator.files_length)
     # for j in range(len(test_generator.files_length)):
     #     real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')

@@ -218,24 +218,37 @@ def data_files(data_path):
     return
 
 
-def get_transitions(duration):
+def get_transitions(len_music, len_speech):
     """
     # Arguments:
-        duration:
+        duration: total duration of the combination of files
     # Return:
-        transitions:
+        transitions: moments where a transition is going to take place (in seconds)
     """
-    init_transitions, transitions = [], []
-    for j in range(randint(1, 9)):
-        init_transitions.append(randint(0, int(duration)))
-    init_transitions.sort()
-    if init_transitions[0] >= 2:
-        transitions.append(init_transitions[0])
-    for k in range(len(init_transitions) - 1):
-        if init_transitions[k + 1] - init_transitions[k] > 4:
-            transitions.append(init_transitions[k + 1])
-    transitions.sort()
-    return transitions
+    durations_music, durations_speech = [], []
+    dur_music, dur_speech = [], []
+
+    while len(dur_speech) == 0:
+        n_trans = randint(2, 6)
+        for j in range(n_trans):
+            durations_music.append(randint(6, int(len_music)))
+            durations_speech.append(randint(6, int(len_speech)))
+
+        durations_music = [int(durations_music[i]*len_music/sum(durations_music)) for i in range(n_trans)]
+        durations_speech = [int(durations_speech[i]*len_speech/sum(durations_speech)) for i in range(n_trans)]
+
+        for i in range(n_trans):
+            if durations_speech[i] > 5:
+                dur_speech.append(durations_speech[i])
+            if durations_music[i] > 5:
+                dur_music.append(durations_music[i])
+
+        if len(dur_music) > len(dur_speech):
+            dur_music = dur_music[:len(dur_speech)]
+        else:
+            dur_speech = dur_speech[:len(dur_music)]
+
+    return dur_music, dur_speech
 
 
 def create_manual_demo(data_path, save_path):
@@ -248,47 +261,53 @@ def create_manual_demo(data_path, save_path):
     classes = os.listdir(data_path)
     music_files = os.listdir(os.path.join(data_path, classes[0]))
     speech_files = os.listdir(os.path.join(data_path, classes[1]))
-    file_names, labels = [], []
+    file_names, labels, changes = [], [], []
 
     for i in range(len(music_files)):
         audio_labels = []
-        music, sr_music = librosa.load(os.path.join(data_path, classes[0], music_files[i]))
+        music, sr = librosa.load(os.path.join(data_path, classes[0], music_files[i]))
         speech, sr_speech = librosa.load(os.path.join(data_path, classes[1], speech_files[i]))
-        speech = librosa.resample(speech, sr_speech, sr_music)
-        duration = librosa.get_duration(music) + librosa.get_duration(speech)
-        gender = [music, speech]
+        speech = librosa.resample(speech, sr_speech, sr)
         initial = randint(0, 1)
-        last = [0, 0]
-        transitions = get_transitions(duration)
+        label = ['music', 'speech']
 
-        comb = gender[initial][0:transitions[0] * sr_speech]
-        if initial == 0:
-            audio_labels = audio_labels + ['music']*(transitions[0]-2)
-        else:
-            audio_labels = audio_labels + ['speech']*(transitions[0]-2)
-        last[initial] = transitions[0]
-        for j in range(len(transitions)-1):
+        dur_music, dur_speech = get_transitions(librosa.get_duration(music), librosa.get_duration(speech))
+        seg_music = [music[dur_music[i]*sr:dur_music[i+1]*sr] for i in range(len(dur_music)-1)]
+        seg_speech = [speech[dur_speech[i]*sr:dur_speech[i+1]*sr] for i in range(len(dur_speech)-1)]
+        segments = [seg_music, seg_speech]
+        durations = [dur_music, dur_speech]
+
+        audio = segments[initial][0]
+        audio_labels = audio_labels + [[label[initial]] * (durations[initial][0] - 2)]
+
+        for j in range(len(dur_music)-1):
             case = (j + 1) % 2
-            dur = transitions[j+1] - transitions[j]
-            segment = gender[case][last[case]*sr_music:(last[case]+dur)*sr_music]
+            dur = durations[case][j]
+            segment = segments[case][j]
+
             if len(segment) == 0:
                 break
             else:
-                fade_in, ending = process_audio.fade_in_out(segment, sr_music)
-                beginning, fade_out = comb[0:len(comb)-2*sr_music-1], comb[len(comb)-2*sr_music:]
-                comb = np.append(beginning, fade_in+fade_out)
-                comb = np.append(comb, ending)
+                fade_in, ending = process_audio.fade_in_out(segment, sr)
+                beginning, fade_out = audio[0:len(audio)-2*sr-1], audio[len(audio)-2*sr:]
+                audio = np.append(beginning, fade_in+fade_out)
+                audio = np.append(audio, ending)
+
                 audio_labels = audio_labels + ['music_speech']*2
-                if case == 0:
-                    audio_labels = audio_labels + ['music']*(dur-2)
-                else:
-                    audio_labels = audio_labels + ['speech']*(dur-2)
+                audio_labels = audio_labels + label[case] * (dur - 2)
+
         output_path = os.path.join(save_path, 'comb_'+str(i)+'.wav')
-        wavfile.write(output_path, sr_music, comb)
+        wavfile.write(output_path, sr, audio)
         file_names.append(output_path)
         labels.append(audio_labels)
+
+    utils.list_to_file(changes, os.path.join(save_path, 'changes.txt'))
     utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
     utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
+
+    # TODO: Adapt DB labels to separation/overlap
+    # TODO: Change to acquisition from data frame
+    # TODO: Correction in creation of audio files
     return
 
 
@@ -413,3 +432,6 @@ def create_df_database(data_path, save_path):
                 writer.writerow({'spec_name': spec_names[i], 'ground_truth': labels[i], 'audio_name': audio_names[i]})
 
     return
+
+
+create_manual_demo('/home/rds/databases/demo_files', '/home/rds/databases/created_2')

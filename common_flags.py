@@ -32,7 +32,7 @@ gflags.DEFINE_string('experiment_root_directory', "./models/test_10", 'Folder '
                      ' containing all the logs, model weights and results')
 gflags.DEFINE_string('data_path', "/home/rds/databases/spec_google",
                      'Folder containing the whole data set')
-gflags.DEFINE_string('demo_path', "/home/rds/databases/created_demo",
+gflags.DEFINE_string('demo_path', "/home/rds/databases/muspeak",
                      'Folder containing the demo data set')
 gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
                      ' to be processed')
