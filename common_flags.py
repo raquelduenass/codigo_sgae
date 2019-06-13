@@ -6,10 +6,10 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_bool('random_seed', True, 'Random seed')
 
 # Input
-gflags.DEFINE_integer('img_width', 97, 'Target Image Width')
+gflags.DEFINE_integer('img_width', 49, 'Target Image Width')
 gflags.DEFINE_integer('img_height', 64, 'Target Image Height')
 gflags.DEFINE_integer('num_classes', 4, 'Number of classes in data set')
-gflags.DEFINE_float('separation', 1.92, 'Duration in seconds of the represented spectrogram')
+gflags.DEFINE_float('separation', 0.96, 'Duration in seconds of the represented spectrogram')
 gflags.DEFINE_integer('sr', 22050, 'Sample rate imposed to audio')
 gflags.DEFINE_integer('power', 2, 'Type of value represented in spectrogram')
 gflags.DEFINE_float('overlap', 0.5, 'Time overlap among samples in demo')
@@ -28,9 +28,9 @@ gflags.DEFINE_string('f_output', 'softmax', 'Output function')
 gflags.DEFINE_float('threshold', 0.4, 'Minimum value for the sigmoid output to be active')
 
 # Files
-gflags.DEFINE_string('experiment_root_directory', "./models/test_10", 'Folder '
+gflags.DEFINE_string('experiment_root_directory', "./models/test_11", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "/home/rds/databases/spec_google",
+gflags.DEFINE_string('data_path', "/home/rds/databases/df_spec",
                      'Folder containing the whole data set')
 gflags.DEFINE_string('demo_path', "/home/rds/databases/muspeak",
                      'Folder containing the demo data set')

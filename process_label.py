@@ -296,7 +296,7 @@ def labels_for_demo(real):
 
     labels = [real[i].split("', '") for i in range(len(real))]
     for i in range(len(labels)):
-        labels[i][0] = labels[i][0].split("['")[1]
+        labels[i][0] = labels[i][0].split("['")[0]
         labels[i][-1] = labels[i][-1].split("']")[0]
 
     return labels

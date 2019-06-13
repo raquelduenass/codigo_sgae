@@ -50,21 +50,22 @@ def _main():
 
     # Real labels
     # TODO: Adapt labels from created demo files to corresponding time
+    # TODO: Standardize labels from every database
     real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
     real = process_label.labels_for_demo(real)
     real_labels, complete_labels = [], []
+
     for i in range(len(real)):
-        real_labels.append(process_label.labels_to_number(real[i]))
+        if FLAGS.demo_path == "/home/rds/databases/muspeak":
+            real_labels.append(real[i])
+        else:
+            real_labels.append(process_label.labels_to_number(real[i]))
 
     print(str(n_samples))
     print(str(sum([len(real_labels[i]) for i in range(len(real_labels))])))
 
-    for i in range(len(real_labels)/FLAGS.overlap):
+    for i in range(int(len(real_labels)/FLAGS.overlap)):
         complete_labels.append(real_labels[int(round(i*FLAGS.overlap))])
-    # real_labels = [[]] * len(test_generator.files_length)
-    # for j in range(len(test_generator.files_length)):
-    #     real[j] = ((real[j].split('[')[1]).split(']')[0]).split(', ')
-    #     real_labels[j] = [CLASSES[int(i)] for i in real[j]]
 
     # Class correspondence
     if FLAGS.f_output == 'sigmoid':

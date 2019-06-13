@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Dec 10 11:35:32 2018
-
 @author: rds
 """
 from __future__ import print_function
@@ -226,29 +225,34 @@ def get_transitions(len_music, len_speech):
         transitions: moments where a transition is going to take place (in seconds)
     """
     durations_music, durations_speech = [], []
-    dur_music, dur_speech = [], []
+    init_speech = []
 
-    while len(dur_speech) == 0:
+    while len(init_speech) == 0:
         n_trans = randint(2, 6)
         for j in range(n_trans):
             durations_music.append(randint(6, int(len_music)))
             durations_speech.append(randint(6, int(len_speech)))
 
-        durations_music = [int(durations_music[i]*len_music/sum(durations_music)) for i in range(n_trans)]
-        durations_speech = [int(durations_speech[i]*len_speech/sum(durations_speech)) for i in range(n_trans)]
+        dur_music = [int(durations_music[i]*len_music/sum(durations_music)) for i in range(n_trans)]
+        dur_speech = [int(durations_speech[i]*len_speech/sum(durations_speech)) for i in range(n_trans)]
+
+        durations_music, durations_speech = [], []
 
         for i in range(n_trans):
-            if durations_speech[i] > 5:
-                dur_speech.append(durations_speech[i])
-            if durations_music[i] > 5:
-                dur_music.append(durations_music[i])
+            if dur_speech[i] > 5:
+                durations_speech.append(dur_speech[i])
+            if dur_music[i] > 5:
+                durations_music.append(dur_music[i])
 
-        if len(dur_music) > len(dur_speech):
-            dur_music = dur_music[:len(dur_speech)]
+        if len(durations_music) > len(durations_speech):
+            durations_music = durations_music[:len(durations_speech)]
         else:
-            dur_speech = dur_speech[:len(dur_music)]
+            durations_speech = durations_speech[:len(durations_music)]
 
-    return dur_music, dur_speech
+        init_music = [sum(durations_music[:i+1]) for i in range(len(durations_music))]
+        init_speech = [sum(durations_speech[:i+1]) for i in range(len(durations_speech))]
+
+    return init_music, init_speech
 
 
 def create_manual_demo(data_path, save_path):
@@ -261,53 +265,88 @@ def create_manual_demo(data_path, save_path):
     classes = os.listdir(data_path)
     music_files = os.listdir(os.path.join(data_path, classes[0]))
     speech_files = os.listdir(os.path.join(data_path, classes[1]))
-    file_names, labels, changes = [], [], []
+    file_names, labels = [], []
 
     for i in range(len(music_files)):
+        seg_music, seg_speech = [], []
         audio_labels = []
+        case = randint(0, 1)
         music, sr = librosa.load(os.path.join(data_path, classes[0], music_files[i]))
         speech, sr_speech = librosa.load(os.path.join(data_path, classes[1], speech_files[i]))
         speech = librosa.resample(speech, sr_speech, sr)
-        initial = randint(0, 1)
-        label = ['music', 'speech']
+        label = ['speech', 'music']
 
         dur_music, dur_speech = get_transitions(librosa.get_duration(music), librosa.get_duration(speech))
-        seg_music = [music[dur_music[i]*sr:dur_music[i+1]*sr] for i in range(len(dur_music)-1)]
-        seg_speech = [speech[dur_speech[i]*sr:dur_speech[i+1]*sr] for i in range(len(dur_speech)-1)]
+
+        seg_music.append(music[0:dur_music[0] * sr])
+        seg_speech.append(speech[0:dur_speech[0] * sr])
+
+        if not(len(dur_music) == 1):
+            if len(dur_music) == 2:
+                seg_music.append(music[dur_music[0] * sr:(dur_music[1] - 1) * sr])
+                seg_speech.append(speech[dur_speech[0] * sr:(dur_speech[1] - 1) * sr])
+            else:
+                for j in range(len(dur_music)-1):
+                    seg_music.append(music[dur_music[j]*sr:(dur_music[j+1]-1)*sr])
+                    seg_speech.append(speech[dur_speech[j]*sr:(dur_speech[j+1]-1)*sr])
+
         segments = [seg_music, seg_speech]
         durations = [dur_music, dur_speech]
 
-        audio = segments[initial][0]
-        audio_labels = audio_labels + [[label[initial]] * (durations[initial][0] - 2)]
+        audio = segments[case][0]
+        audio_labels.append([label[case]] * (durations[case][0] - 3))
 
-        for j in range(len(dur_music)-1):
-            case = (j + 1) % 2
-            dur = durations[case][j]
-            segment = segments[case][j]
+        if not (len(dur_music) == 1):
+            if len(dur_music) == 2:
+                case = (case + 1) % 2
+                dur = durations[case][1] - durations[case][0]
+                segment = segments[case][1]
 
-            if len(segment) == 0:
-                break
+                if len(segment) == 0:
+                    break
+                else:
+                    fade_in, ending = process_audio.fade_in_out(segment, sr)
+                    beginning, fade_out = audio[0:len(audio) - 2 * sr - 1], audio[len(audio) - 2 * sr:]
+                    audio = np.append(beginning, fade_in + fade_out)
+                    audio = np.append(audio, ending)
+
+                    audio_labels = audio_labels + ['music_speech'] * 2
+                    audio_labels = audio_labels + [label[case]] * (dur - 5)
             else:
-                fade_in, ending = process_audio.fade_in_out(segment, sr)
-                beginning, fade_out = audio[0:len(audio)-2*sr-1], audio[len(audio)-2*sr:]
-                audio = np.append(beginning, fade_in+fade_out)
-                audio = np.append(audio, ending)
+                for j in range(len(dur_music)-1):
+                    case = (case + 1) % 2
+                    dur = durations[case][j+1] - durations[case][j]
+                    segment = segments[case][j+1]
 
-                audio_labels = audio_labels + ['music_speech']*2
-                audio_labels = audio_labels + label[case] * (dur - 2)
+                    if len(segment) == 0:
+                        break
+                    else:
+                        fade_in, ending = process_audio.fade_in_out(segment, sr)
+                        beginning, fade_out = audio[0:len(audio)-2*sr-1], audio[len(audio)-2*sr:]
+                        audio = np.append(beginning, fade_in+fade_out)
+                        audio = np.append(audio, ending)
 
+                        audio_labels = audio_labels + ['music_speech']*2
+                        audio_labels = audio_labels + [label[case]] * (dur - 5)
+
+        librosa.feature.rms(audio)
+        audio_labels = audio_labels + [label[case]]*2
+        audio_labels = audio_labels[0] + audio_labels[1:]
         output_path = os.path.join(save_path, 'comb_'+str(i)+'.wav')
         wavfile.write(output_path, sr, audio)
         file_names.append(output_path)
         labels.append(audio_labels)
 
-    utils.list_to_file(changes, os.path.join(save_path, 'changes.txt'))
-    utils.list_to_file(file_names, os.path.join(save_path, 'data.txt'))
-    utils.list_to_file(labels, os.path.join(save_path, 'labels.txt'))
+    with open(os.path.join(FLAGS.experiment_root_directory, "demo.csv"), mode='w') as csv_file:
+        fieldnames = ['file_name', 'ground_truth']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(len(file_names)):
+            writer.writerow({'file_name': file_names[i], 'ground_truth': labels[i]})
 
     # TODO: Adapt DB labels to separation/overlap
     # TODO: Change to acquisition from data frame
-    # TODO: Correction in creation of audio files
     return
 
 
@@ -355,11 +394,10 @@ def cross_val_create_df(path):
     :param path: folder containing the data
     :return: split of the data in train, validation and test sets
     """
-    val_data = pd.DataFrame()
-    test_data = pd.DataFrame()
-    train_data = pd.DataFrame()
+    val_gt, test_gt, train_gt = [], [], []
+    val_data, test_data, train_data = [], [], []
 
-    for classes in os.listdir(path):
+    for i, classes in enumerate(os.listdir(path)):
 
         data = pd.read_csv(os.path.join(path, classes, 'data.csv'))
         audios = data['audio_name'].unique()
@@ -369,23 +407,45 @@ def cross_val_create_df(path):
         index4 = int(round(len(order) / 4))
         index2 = int(round(len(order) / 2))
 
-        val_data.append(data[data['spec_name'] == audios[index4:index2]])
-        test_data.append(data[data['spec_name'] == audios[0:index4]])
-        train_data.append(data[data['spec_name'] == audios[index2:]])
+        val_gt.append(list(data['ground_truth'][data['audio_name'].isin(audios[index4:index2])]))
+        test_gt.append(list(data['ground_truth'][data['audio_name'].isin(audios[0:index4])]))
+        train_gt.append(list(data['ground_truth'][data['audio_name'].isin(audios[index2:])]))
 
-    # Create files of directories, labels and moments
-    train_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "train.csv"))
-    val_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "validation.csv"))
-    test_data.to_csv(os.path.join(FLAGS.experiment_root_directory, "test.csv"))
+        val_data.append(list(data['spec_name'][data['audio_name'].isin(audios[index4:index2])]))
+        test_data.append(list(data['spec_name'][data['audio_name'].isin(audios[0:index4])]))
+        train_data.append(list(data['spec_name'][data['audio_name'].isin(audios[index2:])]))
 
-    # if FLAGS.from_audio:
-    #     moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
-    #     utils.list_to_file([moments[i] for i in order[index2:]],
-    #                        os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
-    #     utils.list_to_file([moments[i] for i in order[index4:index2]],
-    #                        os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
-    #     utils.list_to_file([moments[i] for i in order[0:index4]],
-    #                        os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
+    val_data = [j for i in val_data for j in i]
+    test_data = [j for i in test_data for j in i]
+    train_data = [j for i in train_data for j in i]
+    val_gt = [j for i in val_gt for j in i]
+    test_gt = [j for i in test_gt for j in i]
+    train_gt = [j for i in train_gt for j in i]
+
+    with open(os.path.join(FLAGS.experiment_root_directory, "validation.csv"), mode='w') as csv_file:
+        fieldnames = ['spec_name', 'ground_truth']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(len(val_data)):
+            writer.writerow({'spec_name': val_data[i], 'ground_truth': val_gt[i]})
+
+    with open(os.path.join(FLAGS.experiment_root_directory, "test.csv"), mode='w') as csv_file:
+        fieldnames = ['spec_name', 'ground_truth']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(len(test_data)):
+            writer.writerow({'spec_name': test_data[i], 'ground_truth': test_gt[i]})
+
+    with open(os.path.join(FLAGS.experiment_root_directory, "train.csv"), mode='w') as csv_file:
+        fieldnames = ['spec_name', 'ground_truth']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(len(train_data)):
+            writer.writerow({'spec_name': train_data[i], 'ground_truth': train_gt[i]})
+
     return
 
 

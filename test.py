@@ -69,8 +69,7 @@ def _main():
     test_data_gen = utils_data.DataGenerator(rescale=1./255)
     
     # Iterator object containing testing data to be generated batch by batch
-    test_generator = test_data_gen.flow_from_directory('test',
-                                                       shuffle=False,
+    test_generator = test_data_gen.flow_from_directory('test', shuffle=False,
                                                        target_size=(FLAGS.img_height, FLAGS.img_width),
                                                        batch_size=FLAGS.batch_size)
     
@@ -79,7 +78,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_10/weights_010.h5')
+    weights_load_path = FLAGS.weigths_filename  # os.path.abspath('./models/test_10/weights_010.h5')
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -87,7 +86,10 @@ def _main():
         print("Impossible to find weight path. Returning untrained model")
 
     # Compile model
-    model.compile(loss='categorical_crossentropy', optimizer='adam')  # categorical_crossentropy
+    if FLAGS.f_output == 'softmax':
+        model.compile(loss='categorical_crossentropy', optimizer='adam')
+    else:
+        model.compile(loss='mse', optimizer='adam')
 
     # Get predictions and ground truth
     n_samples = test_generator.samples

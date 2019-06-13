@@ -74,12 +74,12 @@ class DirectoryIterator(Iterator):
 
             self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, labels_file, moments_file)
         else:
-            self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
-            # self.file_names, self.ground_truth = cross_val_load_df(data_file)
+            # self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
+            self.file_names, self.ground_truth = cross_val_load_df(data_file)
         
         # Number of samples in data
         self.samples = len(self.file_names)
-        self.num_classes = len(np.unique(self.ground_truth, axis=0))
+        self.num_classes = len(np.unique(self.ground_truth))
 
         # Check if data is empty
         if self.samples == 0:
@@ -117,7 +117,8 @@ class DirectoryIterator(Iterator):
                     segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
                     x = process_audio.compute_mel_gram(segment)
                 else:
-                    x = np.load(FLAGS.data_path + self.file_names[j])
+                    # x = np.load(FLAGS.data_path + self.file_names[j])
+                    x = np.load(self.file_names[j])
                 # Data augmentation
                 x = self.image_data_generator.standardize(x)
                 x = self.image_data_generator.random_transform(x)
@@ -216,11 +217,14 @@ def load_many(self, j):
             x = process_audio.compute_mel_gram(segment)
         else:
             if j + i < 0:
-                x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
+                # x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
+                x = np.load(self.file_names[int(len(self.file_names) + i)])
             elif j+i < len(self.file_names):
-                x = np.load(FLAGS.data_path + self.file_names[int(j+i)])
+                # x = np.load(FLAGS.data_path + self.file_names[int(j + i)])
+                x = np.load(self.file_names[int(j+i)])
             else:
-                x = np.load(FLAGS.data_path + self.file_names[int(i)])
+                # x = np.load(FLAGS.data_path + self.file_names[int(i)])
+                x = np.load(self.file_names[int(i)])
         # Data augmentation
         x = self.image_data_generator.standardize(x)
         x = self.image_data_generator.random_transform(x)

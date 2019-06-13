@@ -11,25 +11,27 @@ def fade_in_out(segment, sr_music):
     :return rest: merge of the no fading and fade-out transition sequences
     """
     fade_length = int(2 * sr_music)
-    factor = 0
     separations = 10
     n_samples = int(librosa.get_duration(segment) * sr_music)
-    fade = segment[0:int(fade_length / separations)] * factor
 
-    for i in range(separations - 1):
-        fade = np.append(fade, segment[int((i + 1) * fade_length / separations):
-                                       int((i + 2) * fade_length / separations)] * factor)
-        fade = fade[0:fade_length]
-        factor += 1 / separations
-
-    rest = segment[fade_length:n_samples - fade_length]
+    fade_in = segment[0:fade_length]
+    fade_out = segment[n_samples-fade_length:]
+    fade_in_end = np.zeros((fade_length,))
+    fade_out_end = np.zeros((fade_length,))
+    rest = segment[fade_length:n_samples-fade_length-1]
 
     for i in range(separations):
-        rest = np.append(fade, segment[int(n_samples - (separations - i) * fade_length / 10):
-                                       int(n_samples - (separations - i - 1) * fade_length / 10)] * factor)
-        factor -= 1 / separations
+        factor_in = i/separations
+        factor_out = (separations-i)/separations
+        fade_in_end[int(i*fade_length/separations):int((i+1)*fade_length/separations)] = \
+            fade_in[int(i*fade_length/separations):
+                    int((i+1)*fade_length/separations)] * factor_in
+        fade_out_end[int((separations-i)*fade_length/separations-1):int(((separations-i)+1)*fade_length/separations)] = \
+            fade_out[int((separations-i)*fade_length/separations-1):
+                     int(((separations-i)+1)*fade_length/separations)]*factor_out
+    rest = np.append(rest, fade_out_end)
 
-    return fade, rest
+    return fade_in_end, rest
 
 
 def separate_many_audio(self, index_array):

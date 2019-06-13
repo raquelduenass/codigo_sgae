@@ -21,7 +21,7 @@ from keras import backend as k
 TRAIN_PHASE = 1
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-# os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
+# os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'  # Only in Windows
 
 
 def get_model_res_net(img_height, img_width, weights_path):
@@ -70,9 +70,14 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
        initial_epoch: Epoch from which training starts.
     """
     # Configure training process
-    model.compile(loss='categorical_crossentropy',  # mse
-                  optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                  metrics=['categorical_accuracy'])  # mse
+    if FLAGS.f_output == 'softmax':
+        model.compile(loss='categorical_crossentropy',  # mse
+                      optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
+                      metrics=['categorical_accuracy'])  # mse
+    else:
+        model.compile(loss='mse',
+                      optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
+                      metrics=['mse'])
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_root_directory, 'weights_{epoch:03d}.h5')
@@ -105,8 +110,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=30,
-                            workers=2,
-                            use_multiprocessing=True)
+                            workers=2, use_multiprocessing=True)
     else:
         model.fit_generator(train_data_generator,
                             epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
@@ -115,8 +119,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=10,
-                            workers=2,
-                            use_multiprocessing=False)
+                            workers=2, use_multiprocessing=False)
 
 
 def _main():
@@ -139,12 +142,12 @@ def _main():
         
     # Split the data into training, validation and test sets
     if FLAGS.initial_epoch == 0:
-        process_database.cross_val_create(FLAGS.data_path)
+        process_database.cross_val_create_df(FLAGS.data_path)
     
     # Input image dimensions
     img_width, img_height = FLAGS.img_width, FLAGS.img_height
 
-    # Generate training  and validation data with real-time augmentation
+    # Generate training and validation data with real-time augmentation
     train_data_gen = utils_data.DataGenerator(rescale=1. / 255)
     val_data_gen = utils_data.DataGenerator(rescale=1. / 255)
 
@@ -165,18 +168,15 @@ def _main():
 
     assert val_generator.num_classes == FLAGS.num_classes, \
         " Not matching output dimensions in validation data."
-          
-    # Weights to restore
-    weights_path = FLAGS.initial_weights
-    
-    # Epoch from which training starts
-    initial_epoch = 0
+
     if not FLAGS.restore_model:
-        # In this case weights are initialized randomly
+        # Weights are initialized randomly
+        initial_epoch = 0
         weights_path = None
     else:
-        # In this case weights are initialized as specified in pre-trained model
+        # Weights are initialized as specified in pre-trained model
         initial_epoch = FLAGS.initial_epoch
+        weights_path = FLAGS.initial_weights
 
     # Define model
     model = get_model_res_net(img_height, img_width, weights_path)
