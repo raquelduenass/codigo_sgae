@@ -2,11 +2,12 @@ from sklearn import metrics
 from collections import Counter
 import numpy as np
 from matplotlib import pyplot as plt
-from keras.utils import to_categorical
-from sklearn import preprocessing
 from common_flags import FLAGS
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 
-def show_metrics(real, predicted, soft=None):
+
+def show_results(real, predicted, soft=None):
     """
     Printing of the main metrics to check the performance of the system
     # Arguments:
@@ -30,18 +31,8 @@ def show_metrics(real, predicted, soft=None):
         print('Recall after softening= ', metrics.recall_score(real, soft, average='weighted'))
         print('F-score after softening= ', metrics.f1_score(real, soft, average='weighted'))
 
-    return
-
-
-def show_detections(labels):
-    """
-    Print the moments and durations of music detections
-    # Arguments:
-        labels:
-        separation:
-        overlap:
-    """
-    labels = number_to_labels(labels)
+    # Music detection
+    labels = number_to_labels(predicted)
     music_pos, music_dur = counting(labels, 'music')
     print('Music detected in:')
     for i in range(len(music_pos)):
@@ -53,6 +44,7 @@ def show_detections(labels):
             print('Beginning: ', int((music_pos[i] * FLAGS.overlap) // 60), 'min ',
                   int((music_pos[i] * FLAGS.overlap) % 60),
                   'seg - Duration: ', music_dur[i] * FLAGS.overlap)
+
     return
 
 
@@ -155,35 +147,6 @@ def counting(data, label):
     return pos, length
 
 
-def join_labels(predicted, silence, lengths=None):
-    """
-    Merge of the silence labels and the predicted ones from the CNN
-    # Arguments:
-        predicted: predictions from the CNN
-        silence: silence detections
-        lengths:
-    # Return:
-        silence: merge of the inputs
-    """
-    j = 0
-    for i in range(len(predicted)):
-        while silence[j] != '':
-            j = j+1
-        silence[j] = predicted[i]
-        j = j+1
-
-    if lengths is None:
-        labels = silence
-    else:
-        labels = [[]] * len(lengths)
-        for i in range(len(lengths)):
-            if i == 0:
-                labels[i] = predicted[0:lengths[i]]
-            else:
-                labels[i] = predicted[lengths[i - 1] + 1:lengths[i]]
-    return labels
-
-
 def predict(probabilities, threshold):
     probabilities_fil = [[]]*len(probabilities)
     for i, item in enumerate(probabilities):
@@ -254,49 +217,93 @@ def number_to_labels(numbers):
     return real_labels
 
 
-def visualize_output(outputs, labels, ground_truth):
-    """
-    Visualization of each output channel across time
-    # Arguments:
-        outputs:
-        labels:
-        ground_truth:
-    """
-    if FLAGS.overlap == 0:
-        distance = FLAGS.separation
-        duration = len(outputs[0]) * FLAGS.separation
+def plot_output(labels, subplot, name):
+    labels = number_to_labels(labels)
+    music_pos, music_dur = counting(labels, 'music')
+    music_pos_seg, music_dur_seg = [[]]*len(music_pos), [[]]*len(music_dur)
+
+    for i in range(len(music_pos)):
+        if FLAGS.overlap == 0:
+            music_pos_seg[i] = music_pos[i] * FLAGS.separation
+            music_dur_seg[i] = music_dur[i] * FLAGS.separation
+            tot_dur = (len(labels) + 1)*FLAGS.separation
+        else:
+            music_pos_seg[i] = music_pos[i] * FLAGS.overlap
+            music_dur_seg[i] = music_dur[i] * FLAGS.overlap
+            tot_dur = len(labels)*FLAGS.overlap+FLAGS.separation
+
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111, aspect='equal')
+    for x, xe, in zip(music_pos_seg, music_dur_seg):
+        ax1.add_patch(Rectangle((x, 0), xe, 5))
+
+    plt.xlim((0, tot_dur))
+    plt.ylim((0, 5))
+
+    if subplot == 1:
+        plt.title('Real music locations: ' + str(name))
     else:
-        distance = FLAGS.overlap / FLAGS.separation
-        duration = len(outputs[0]) * FLAGS.overlap / FLAGS.separation
-
-    plt.subplot(211)
-    t = np.arange(0.0, duration, distance)
-    # for i in range(len(outputs)):
-    #    plt.plot(t, outputs[i], label=labels[i])
-    plt.fill_between(t, outputs)
-    plt.title('CNN output')
-
-    le = preprocessing.LabelEncoder()
-    ground_truth = le.fit_transform(ground_truth)
-    encoded = to_categorical(ground_truth)
-    ground_truth = list(encoded.T)
-
-    plt.subplot(212)
-    # for i in range(len(ground_truth)):
-    #     plt.plot(t, ground_truth[i], label=labels[i])
-    plt.fill_between(t, ground_truth)
-    plt.title('Ground truth')
-    plt.subplots_adjust(top=0.92, bottom=0.08, hspace=0.5)
+        plt.title('Predicted music locations: ' + str(name))
     plt.show()
 
     return
 
 
-def labels_for_demo(real):
+def real_label_process(real, n_samples, lengths):
+    adapted_labels = []
+    real_labels = []
 
     labels = [real[i].split("', '") for i in range(len(real))]
     for i in range(len(labels)):
-        labels[i][0] = labels[i][0].split("['")[0]
+        labels[i][0] = labels[i][0].split("['")[1]
         labels[i][-1] = labels[i][-1].split("']")[0]
 
-    return labels
+    flat_real = [item for sublist in labels for item in sublist]
+
+    if len(flat_real) == n_samples:
+        adapted_labels = flat_real
+    else:
+        for i in range(n_samples):
+            if FLAGS.overlap == 0:
+                lower_index = round(i * FLAGS.separation)
+                lower_solap = (lower_index + 1) - i * FLAGS.separation
+                upper_solap = (i+1) * FLAGS.separation - (lower_index + 1)
+            else:
+                lower_index = round(i * FLAGS.overlap)
+                lower_solap = (lower_index + 1) - i * FLAGS.overlap
+                upper_solap = i * FLAGS.overlap + FLAGS.separation - (lower_index + 1)
+
+            if lower_solap > upper_solap or lower_index >= (len(flat_real) - 1):
+                index = lower_index
+            else:
+                index = lower_index + 1
+            if index > len(flat_real)-1:
+                index = len(flat_real)-1
+            adapted_labels.append(flat_real[index])
+
+    if FLAGS.demo_path == "../../databases/muspeak":
+        for i in range(len(adapted_labels)):
+            real_labels.append(number_to_labels(adapted_labels[i]))
+    else:
+        real_labels = adapted_labels
+
+    real_labels = labels_to_number(real_labels)
+    real_labels = separate_labels(real_labels, lengths)
+
+    return real_labels
+
+
+def predicted_label_process(probs, lengths):
+    # Class correspondence
+    if FLAGS.f_output == 'sigmoid':
+        predicted_labels = predict(probs, FLAGS.threshold)
+    else:
+        predicted_labels = np.argmax(probs, axis=-1).tolist()
+
+    predicted_labels = separate_labels(predicted_labels, lengths)
+
+    # Temporal filtering
+    if FLAGS.structure == 'simple':
+        predicted_labels = soft_max(predicted_labels, len(lengths))
+
+    return predicted_labels

@@ -3,6 +3,7 @@ import numpy as np
 import utils
 import librosa
 import process_audio
+import pandas as pd
 from keras.preprocessing.image import Iterator, ImageDataGenerator
 from common_flags import FLAGS
 
@@ -45,7 +46,8 @@ class DirectoryIterator(Iterator):
         self.samples = 0
 
         # File of database for the phase
-        self.file_names = utils.file_to_list(os.path.join(FLAGS.demo_path, 'data.txt'))
+        data = pd.read_csv(os.path.join(FLAGS.demo_path, 'data.csv'))
+        self.file_names = data['file_name'].unique()
 
         # Check if data set is empty
         if len(self.file_names) == 0:
@@ -57,16 +59,21 @@ class DirectoryIterator(Iterator):
             audio, sr_old = librosa.load(self.file_names[i])
             audio = librosa.resample(audio, sr_old, FLAGS.sr)
             if i == 0:
-                self.files_length.append(int((librosa.get_duration(audio) -
-                                              FLAGS.separation) // FLAGS.overlap))
+                if FLAGS.overlap == 0:
+                    self.files_length.append(int(librosa.get_duration(audio) // FLAGS.separation))
+                else:
+                    self.files_length.append(int((librosa.get_duration(audio) -
+                                                  FLAGS.separation) // FLAGS.overlap))
             else:
-                self.files_length.append(int(self.files_length[i-1]) +
-                                         int((librosa.get_duration(audio) -
-                                              FLAGS.separation) // FLAGS.overlap))
-        self.samples = self.files_length[-1]  # len(self.files_length)-1]
-        
-        # Silence labels
-        self.silence_labels = [[]]*self.samples
+                if FLAGS.overlap == 0:
+                    self.files_length.append(int(self.files_length[i - 1]) +
+                                             int(librosa.get_duration(audio) //
+                                                 FLAGS.separation))
+                else:
+                    self.files_length.append(int(self.files_length[i-1]) +
+                                             int((librosa.get_duration(audio) -
+                                                  FLAGS.separation) // FLAGS.overlap))
+        self.samples = self.files_length[-1]
 
         print('Found {} images belonging to {} classes.'.format(
                 self.samples, FLAGS.num_classes))

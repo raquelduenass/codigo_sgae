@@ -26,7 +26,8 @@ def fade_in_out(segment, sr_music):
         fade_in_end[int(i*fade_length/separations):int((i+1)*fade_length/separations)] = \
             fade_in[int(i*fade_length/separations):
                     int((i+1)*fade_length/separations)] * factor_in
-        fade_out_end[int((separations-i)*fade_length/separations-1):int(((separations-i)+1)*fade_length/separations)] = \
+        fade_out_end[int((separations-i)*fade_length/separations-1):
+                     int(((separations-i)+1)*fade_length/separations)] = \
             fade_out[int((separations-i)*fade_length/separations-1):
                      int(((separations-i)+1)*fade_length/separations)]*factor_out
     rest = np.append(rest, fade_out_end)
@@ -67,14 +68,14 @@ def separate_many_audio(self, index_array):
     minus = 0
     for j in range(len(index_array)):
         if FLAGS.overlap == 0:  # No overlapping
-            segments.append(audio[j * FLAGS.separation * FLAGS.sr:
-                                  (j + 1) * FLAGS.separation * FLAGS.sr])
+            segments.append(audio[int(j * FLAGS.separation * FLAGS.sr):
+                                  int((j + 1) * FLAGS.separation * FLAGS.sr)])
         else:
             if (j - minus) * FLAGS.overlap + FLAGS.separation <= real_duration:
                 segments.append(audio[int((j - minus) * FLAGS.overlap * FLAGS.sr):
                                       int(((j - minus) * FLAGS.overlap + FLAGS.separation) * FLAGS.sr)])
             else:  # Change of audio file
-                if actual_file +1 < len(self.file_names):
+                if actual_file + 1 < len(self.file_names):
                     minus = j
                     actual_file = actual_file + 1
                     audio, sr_old = librosa.load(self.file_names[actual_file],

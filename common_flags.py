@@ -12,7 +12,7 @@ gflags.DEFINE_integer('num_classes', 4, 'Number of classes in data set')
 gflags.DEFINE_float('separation', 0.96, 'Duration in seconds of the represented spectrogram')
 gflags.DEFINE_integer('sr', 22050, 'Sample rate imposed to audio')
 gflags.DEFINE_integer('power', 2, 'Type of value represented in spectrogram')
-gflags.DEFINE_float('overlap', 0.5, 'Time overlap among samples in demo')
+gflags.DEFINE_float('overlap', 0, 'Time overlap among samples in demo')
 gflags.DEFINE_integer('wind_len', 5, 'Window length of temporal filtering')
 
 # Training parameters
@@ -30,9 +30,9 @@ gflags.DEFINE_float('threshold', 0.4, 'Minimum value for the sigmoid output to b
 # Files
 gflags.DEFINE_string('experiment_root_directory', "./models/test_11", 'Folder '
                      ' containing all the logs, model weights and results')
-gflags.DEFINE_string('data_path', "/home/rds/databases/df_spec",
+gflags.DEFINE_string('data_path', "../../databases/df_spec",
                      'Folder containing the whole data set')
-gflags.DEFINE_string('demo_path', "/home/rds/databases/muspeak",
+gflags.DEFINE_string('demo_path', "../../databases/created_2",
                      'Folder containing the demo data set')
 gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
                      ' to be processed')
@@ -40,7 +40,7 @@ gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
 # Model
 gflags.DEFINE_bool('restore_model', False, 'Whether to restore a trained'
                    ' model for training')
-gflags.DEFINE_string('weights_filename', './models/test_10/weights_004.h5',
+gflags.DEFINE_string('weights_filename', './models/test_11/weights_006.h5',
                      '(Relative) filename of model weights')
 gflags.DEFINE_string('initial_weights', './models/test_10/weights_004.h5',
                      '(Relative) filename of model initial training weights')

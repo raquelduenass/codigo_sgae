@@ -53,28 +53,14 @@ class DirectoryIterator(Iterator):
         # File of database for the phase
         if directory == 'train':
             data_file = os.path.join(FLAGS.experiment_root_directory, 'train.csv')
-            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'train_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt')
         elif directory == 'val':
             data_file = os.path.join(FLAGS.experiment_root_directory, 'validation.csv')
-            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'val_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt')
         else:
             data_file = os.path.join(FLAGS.experiment_root_directory, 'test.csv')
-            dirs_file = os.path.join(FLAGS.experiment_root_directory, 'test_files.txt')
-            labels_file = os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt')
 
         if FLAGS.from_audio:
-            if directory == 'train':
-                moments_file = os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt')
-            elif directory == 'val':
-                moments_file = os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt')
-            else:
-                moments_file = os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt')
-
-            self.file_names, self.moments, self.ground_truth = cross_val_load(dirs_file, labels_file, moments_file)
+            self.file_names, self.moments, self.ground_truth = cross_val_load_df(data_file)
         else:
-            # self.file_names, self.ground_truth = cross_val_load(dirs_file, labels_file)
             self.file_names, self.ground_truth = cross_val_load_df(data_file)
         
         # Number of samples in data
@@ -148,31 +134,6 @@ class DirectoryIterator(Iterator):
         return batch_x, np.asarray(batch_y)
 
 
-def cross_val_load(dirs_file, labels_file, moments_file=None):
-    """
-    # Arguments:
-        dirs_file: txt file containing the name of the samples
-        moments_file:
-        labels_file: txt file containing the labels of each sample
-    # Return:
-        dirs_list: samples names
-        moments_list:
-        labels_list: ground truth
-    """
-    dirs_list = utils.file_to_list(dirs_file)
-    labels_list = utils.file_to_list(labels_file)
-    labels_list = process_label.labels_to_number(labels_list)
-    labels_list = [np.array(i) for i in labels_list]
-
-    if FLAGS.from_audio:
-        moments_list = utils.file_to_list(moments_file)
-        moments_list = [int(i) for i in moments_list]
-        return dirs_list, np.array(moments_list, dtype=k.floatx()), labels_list
-        # np.array(labels_list, dtype=k.floatx())
-    else:
-        return dirs_list, labels_list
-
-
 def cross_val_load_df(data_file):
     """
     # Arguments:
@@ -187,7 +148,12 @@ def cross_val_load_df(data_file):
     labels_list = process_label.labels_to_number(data['ground_truth'].tolist())
     labels_list = [np.array(i) for i in labels_list]
 
-    return dirs_list, labels_list
+    if FLAGS.from_audio:
+        moments_list = data['moments'].tolist()
+        return dirs_list, labels_list, moments_list
+
+    else:
+        return dirs_list, labels_list
 
 
 def load_many(self, j):

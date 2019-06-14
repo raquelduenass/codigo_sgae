@@ -7,6 +7,7 @@ from common_flags import FLAGS
 from keras.utils.generic_utils import Progbar
 from keras.models import model_from_json
 from sklearn.metrics import confusion_matrix
+import csv
 
 
 def many_generator(generator):
@@ -347,3 +348,16 @@ def plot_confusion_matrix(phase, path_to_results, real_labels, pred_labels, clas
         plt.savefig(os.path.join(path_to_results, "confusion.png"))
     elif phase == 'demo':
         plt.savefig(os.path.join(path_to_results, "demo_confusion.png"))
+
+
+def save_to_csv(filename, data, fieldnames):
+    with open(filename, mode='w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        if len(fieldnames) == 2:
+            for i in range(len(data[0])):
+                writer.writerow({fieldnames[0]: data[0][i], fieldnames[1]: data[1][i]})
+        elif len(fieldnames) == 3:
+            for i in range(len(data[0])):
+                writer.writerow({fieldnames[0]: data[0][i], fieldnames[1]: data[1][i], fieldnames[2]: data[2][i]})
+    return

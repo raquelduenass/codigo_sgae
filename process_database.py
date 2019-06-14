@@ -29,7 +29,7 @@ def data_and_labels(music_path, data_list, label_list, moments_list, label):
         label: ground truth of the subset of samples
     # Return:
         data_list:
-#         label_list:
+        label_list:
         moments_list:
     """
     for music_file in os.listdir(music_path):
@@ -143,9 +143,8 @@ def create_database(root_data_path, separated):
                 moments_list.append(moments_list_m)
 
     # Save file names, labels and moments in file
-    utils.list_to_file(data_list, os.path.join(root_data_path, 'data.txt'))
-    utils.list_to_file(label_list, os.path.join(root_data_path, 'labels.txt'))
-    utils.list_to_file(moments_list, os.path.join(root_data_path, 'moments.txt'))
+    utils.save_to_csv(os.path.join(root_data_path, 'data.csv'), [data_list, label_list, moments_list],
+                      ['file_name', 'ground_truth', 'moments'])
     return
 
 
@@ -194,7 +193,7 @@ def classes_combination(root_data_path, equal, combs, speech_pct):
 
 def data_files(data_path):
     """
-    txt files are created
+    txt files are created of separated database
     # Arguments:
         data_path: folder containing the data
     """
@@ -211,9 +210,9 @@ def data_files(data_path):
         else:
             file_names = file_names + [os.path.join(class_path, files) for files in os.listdir(class_path)]
             labels = labels + [classes for files in os.listdir(class_path)]
-    utils.list_to_file(file_names, os.path.join(data_path, 'data.txt'))
-    utils.list_to_file(labels, os.path.join(data_path, 'labels.txt'))
-    utils.list_to_file(moments, os.path.join(data_path, 'moments.txt'))
+
+    utils.save_to_csv(os.path.join(data_path, 'data.csv'), [file_names, labels, moments],
+                      ['file_name', 'ground_truth', 'moments'])
     return
 
 
@@ -337,55 +336,8 @@ def create_manual_demo(data_path, save_path):
         file_names.append(output_path)
         labels.append(audio_labels)
 
-    with open(os.path.join(FLAGS.experiment_root_directory, "demo.csv"), mode='w') as csv_file:
-        fieldnames = ['file_name', 'ground_truth']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
+    utils.save_to_csv(os.path.join(save_path, "demo.csv"), [file_names, labels], ['file_name', 'ground_truth'])
 
-        for i in range(len(file_names)):
-            writer.writerow({'file_name': file_names[i], 'ground_truth': labels[i]})
-
-    # TODO: Adapt DB labels to separation/overlap
-    # TODO: Change to acquisition from data frame
-    return
-
-
-def cross_val_create(path):
-    """
-     :param path: folder containing the data
-     :return: split of the data in train, validation and test sets
-    """
-    # File names, moments and labels of all samples in data.
-    file_names = utils.file_to_list(os.path.join(path, 'data.txt'))
-    labels = utils.file_to_list(os.path.join(path, 'labels.txt'))
-    order = list(range(len(file_names)))
-    sh(order)
-    order = np.asarray(order)
-    index4 = int(round(len(order) / 4))
-    index2 = int(round(len(order) / 2))
-
-    # Create files of directories, labels and moments
-    utils.list_to_file([file_names[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_root_directory, 'train_files.txt'))
-    utils.list_to_file([file_names[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_root_directory, 'val_files.txt'))
-    utils.list_to_file([file_names[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_root_directory, 'test_files.txt'))
-    utils.list_to_file([labels[i] for i in order[index2:]],
-                       os.path.join(FLAGS.experiment_root_directory, 'train_labels.txt'))
-    utils.list_to_file([labels[i] for i in order[index4:index2]],
-                       os.path.join(FLAGS.experiment_root_directory, 'val_labels.txt'))
-    utils.list_to_file([labels[i] for i in order[0:index4]],
-                       os.path.join(FLAGS.experiment_root_directory, 'test_labels.txt'))
-
-    if FLAGS.from_audio:
-        moments = utils.file_to_list(os.path.join(path, 'moments.txt'))
-        utils.list_to_file([moments[i] for i in order[index2:]],
-                           os.path.join(FLAGS.experiment_root_directory, 'train_moments.txt'))
-        utils.list_to_file([moments[i] for i in order[index4:index2]],
-                           os.path.join(FLAGS.experiment_root_directory, 'val_moments.txt'))
-        utils.list_to_file([moments[i] for i in order[0:index4]],
-                           os.path.join(FLAGS.experiment_root_directory, 'test_moments.txt'))
     return
 
 
@@ -422,29 +374,10 @@ def cross_val_create_df(path):
     test_gt = [j for i in test_gt for j in i]
     train_gt = [j for i in train_gt for j in i]
 
-    with open(os.path.join(FLAGS.experiment_root_directory, "validation.csv"), mode='w') as csv_file:
-        fieldnames = ['spec_name', 'ground_truth']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i in range(len(val_data)):
-            writer.writerow({'spec_name': val_data[i], 'ground_truth': val_gt[i]})
-
-    with open(os.path.join(FLAGS.experiment_root_directory, "test.csv"), mode='w') as csv_file:
-        fieldnames = ['spec_name', 'ground_truth']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i in range(len(test_data)):
-            writer.writerow({'spec_name': test_data[i], 'ground_truth': test_gt[i]})
-
-    with open(os.path.join(FLAGS.experiment_root_directory, "train.csv"), mode='w') as csv_file:
-        fieldnames = ['spec_name', 'ground_truth']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i in range(len(train_data)):
-            writer.writerow({'spec_name': train_data[i], 'ground_truth': train_gt[i]})
+    fieldnames = ['spec_name', 'ground_truth']
+    utils.save_to_csv(os.path.join(FLAGS.experiment_root_directory, "validation.csv"), [val_data, val_gt], fieldnames)
+    utils.save_to_csv(os.path.join(FLAGS.experiment_root_directory, "test.csv"), [test_data, test_gt], fieldnames)
+    utils.save_to_csv(os.path.join(FLAGS.experiment_root_directory, "train.csv"), [train_data, train_gt], fieldnames)
 
     return
 
@@ -483,15 +416,7 @@ def create_df_database(data_path, save_path):
                 spec_names.append(spec_name)
                 labels.append(classes)
 
-        with open(os.path.join(save_path, classes, 'data.csv'), mode='w') as csv_file:
-            fieldnames = ['spec_name', 'ground_truth', 'audio_name']
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-
-            for i in range(len(spec_names)):
-                writer.writerow({'spec_name': spec_names[i], 'ground_truth': labels[i], 'audio_name': audio_names[i]})
+        utils.save_to_csv(os.path.join(save_path, classes, 'data.csv'), [spec_names, labels, audio_names],
+                          ['spec_name', 'ground_truth', 'audio_name'])
 
     return
-
-
-create_manual_demo('/home/rds/databases/demo_files', '/home/rds/databases/created_2')

@@ -2,9 +2,11 @@ import gflags
 import numpy as np
 import os
 import sys
+import csv
 import utils
 import utils_demo
 import process_label
+import pandas as pd
 from keras import backend as k
 from common_flags import FLAGS
 
@@ -32,7 +34,7 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    weights_load_path = os.path.abspath('./models/test_10/weights_010.h5')
+    weights_load_path = os.path.abspath(FLAGS.weights_filename)
     try:
         model.load_weights(weights_load_path)
         print("Loaded model from {}".format(weights_load_path))
@@ -41,47 +43,24 @@ def _main():
 
     # Compile model
     model.compile(loss='categorical_crossentropy', optimizer='adam')
-    
+
     # Get predictions and ground truth
-    n_samples = test_generator.samples
-    nb_batches = int(np.ceil(n_samples / FLAGS.batch_size))
-    prob_per_class = utils.compute_predictions(
-        model, test_generator, nb_batches, verbose=1)
+    nb_batches = int(np.ceil(test_generator.samples / FLAGS.batch_size))
+    prob_per_class = utils.compute_predictions(model, test_generator, nb_batches, verbose=1)
 
-    # Real labels
-    # TODO: Adapt labels from created demo files to corresponding time
-    # TODO: Standardize labels from every database
-    real = utils.file_to_list(os.path.join(FLAGS.demo_path, 'labels.txt'))
-    real = process_label.labels_for_demo(real)
-    real_labels, complete_labels = [], []
+    # Save NN output
+    with open(os.path.join(FLAGS.experiment_root_directory, "probs_out.csv"), "w") as f:
+        wr = csv.writer(f)
+        wr.writerows(prob_per_class)
 
-    for i in range(len(real)):
-        if FLAGS.demo_path == "/home/rds/databases/muspeak":
-            real_labels.append(real[i])
-        else:
-            real_labels.append(process_label.labels_to_number(real[i]))
-
-    print(str(n_samples))
-    print(str(sum([len(real_labels[i]) for i in range(len(real_labels))])))
-
-    for i in range(int(len(real_labels)/FLAGS.overlap)):
-        complete_labels.append(real_labels[int(round(i*FLAGS.overlap))])
-
-    # Class correspondence
-    if FLAGS.f_output == 'sigmoid':
-        predicted_labels = process_label.predict(prob_per_class, FLAGS.threshold)
-    else:
-        predicted_labels = np.argmax(prob_per_class, axis=-1).tolist()
-
-    predicted_labels = process_label.separate_labels(predicted_labels, test_generator.files_length)
-
-    # Temporal filtering
-    if FLAGS.structure == 'simple':
-        predicted_labels = process_label.soft_max(predicted_labels, len(test_generator.file_names))
+    # Process labels
+    data = pd.read_csv(os.path.join(FLAGS.demo_path, 'data.csv'))
+    predicted_labels = process_label.predicted_label_process(prob_per_class, test_generator.files_length)
+    real_labels = process_label.real_label_process(data['ground_truth'].tolist(), test_generator.samples,
+                                                   test_generator.files_length)
 
     # Save predicted and softened labels as a dictionary
-    labels_dict = {'predicted_labels': predicted_labels,
-                   'real_labels': real_labels}
+    labels_dict = {'predicted_labels': predicted_labels, 'real_labels': real_labels}
     utils.write_to_file(labels_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'demo_predicted_and_soft_labels.json'))
     flat_real = [item for sublist in real_labels for item in sublist]
@@ -90,11 +69,11 @@ def _main():
                                 flat_predicted, CLASSES, normalize=True)
 
     # Metrics and boundaries of music
-    for j in range(len(test_generator.files_length)):
+    for j in range(len(test_generator.file_names)):
         print('File: '+str(test_generator.file_names[j]))
-        process_label.show_metrics(real_labels[j], predicted_labels[j])
-        process_label.show_detections(predicted_labels[j])
-        # process_label.visualize_output(predicted_labels[j], CLASSES, real_labels[j])
+        process_label.show_results(real_labels[j], predicted_labels[j])
+        process_label.plot_output(real_labels[j], 1, test_generator.file_names[j])
+        process_label.plot_output(predicted_labels[j], 2, test_generator.file_names[j])
 
 
 def main(argv):

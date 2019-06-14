@@ -20,7 +20,7 @@ from keras import backend as k
 # Constants
 TRAIN_PHASE = 1
 
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
+# os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
 # os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'  # Only in Windows
 
 
@@ -71,9 +71,9 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     """
     # Configure training process
     if FLAGS.f_output == 'softmax':
-        model.compile(loss='categorical_crossentropy',  # mse
+        model.compile(loss='categorical_crossentropy',
                       optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                      metrics=['categorical_accuracy'])  # mse
+                      metrics=['categorical_accuracy'])
     else:
         model.compile(loss='mse',
                       optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
