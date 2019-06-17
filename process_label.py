@@ -249,10 +249,12 @@ def plot_output(labels, subplot, name):
 
 
 def real_label_process(real, n_samples, lengths):
+    # TODO: corregir asignación de etiquetas
     adapted_labels = []
     real_labels = []
 
     labels = [real[i].split("', '") for i in range(len(real))]
+
     for i in range(len(labels)):
         labels[i][0] = labels[i][0].split("['")[1]
         labels[i][-1] = labels[i][-1].split("']")[0]
@@ -301,7 +303,8 @@ def predicted_label_process(probs, lengths):
     predicted_labels = separate_labels(predicted_labels, lengths)
 
     # Temporal filtering
-    if FLAGS.structure == 'simple':
-        predicted_labels = soft_max(predicted_labels, len(lengths))
+    # if FLAGS.structure == 'simple':
+        # predicted_labels = soft_max(predicted_labels, len(lengths))
+
 
     return predicted_labels

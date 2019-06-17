@@ -402,11 +402,11 @@ def create_df_database(data_path, save_path):
             audio, sr = librosa.load(audio_name)
             audio = librosa.resample(audio, sr, 22050)  # FLAGS.sr)
             length = librosa.get_duration(audio)
-            time_set = [np.round(i, decimals=2) for i in list(np.arange(start=0, stop=length, step=0.96))]  # FLAGS.separation))]
+            time_set = [np.round(i, decimals=2) for i in list(np.arange(start=0, stop=length, step=0.96))]
 
             for i in range(len(time_set)):
-                segment = audio[int(i * 0.96 * 22050):  # FLAGS.separation * FLAGS.sr):
-                                int((i + 1) * 0.96 * 22050)]  # FLAGS.separation * FLAGS.sr)]
+                segment = audio[int(i * 0.96 * 22050):
+                                int((i + 1) * 0.96 * 22050)]
                 mel = process_audio.compute_mel_gram(segment, 0.96)
                 spec_name = os.path.join(save_path, classes, 'mel_' + str(j) + '.npy')
                 np.save(spec_name, mel)

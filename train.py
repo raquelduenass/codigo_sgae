@@ -116,7 +116,7 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
                             validation_steps=validation_steps,
                             initial_epoch=initial_epoch,
                             max_queue_size=10,
-                            workers=2, use_multiprocessing=False)
+                            workers=2, use_multiprocessing=True)
 
 
 def _main():

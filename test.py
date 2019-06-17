@@ -98,11 +98,17 @@ def _main():
     probabilities_per_class, ground_truth = utils.compute_predictions_and_gt(
             model, test_generator, nb_batches, verbose=1)
 
-    # Real labels (ground truth)
-    real_labels = np.argmax(ground_truth, axis=-1)
+    saving_dict = {'probabilities': probabilities_per_class.tolist(),
+                   'ground_truth': ground_truth.tolist()}
+    utils.write_to_file(saving_dict, os.path.join(FLAGS.experiment_root_directory,
+                                                  'save_predicted_and_real_labels.json'))
 
+    # Processing of probabilities when sigmoid
     if FLAGS.f_output == 'sigmoid':
-        # Processing of probabilities when sigmoid
+        # Real labels (ground truth)
+        real_labels = np.argmax(process_label.sigmoid_to_softmax(ground_truth.tolist()), axis=-1)
+
+        # Predicted probabilities
         predicted_labels = np.argmax(process_label.predict(probabilities_per_class, FLAGS.threshold), axis=-1)
 
         # Evaluate predictions: Average accuracy and highest errors
@@ -111,7 +117,14 @@ def _main():
         ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
         print('Average accuracy = ', ave_accuracy)
         print("-----------------------------------------------")
+
+        # Save evaluation
+        utils.write_to_file([ave_accuracy], os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
+
     else:
+        # Real labels (ground truth)
+        real_labels = np.argmax(ground_truth, axis=-1)
+
         # Predicted probabilities
         predicted_probabilities = np.max(probabilities_per_class, axis=-1)
 
