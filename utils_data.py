@@ -1,5 +1,4 @@
 import os
-import utils
 import numpy as np
 import keras
 import process_audio
@@ -49,6 +48,7 @@ class DirectoryIterator(Iterator):
         self.image_data_generator = image_data_generator
         self.target_size = target_size
         self.follow_links = follow_links
+        self.num_classes = 0
 
         # File of database for the phase
         if directory == 'train':
@@ -59,13 +59,12 @@ class DirectoryIterator(Iterator):
             data_file = os.path.join(FLAGS.experiment_root_directory, 'test.csv')
 
         if FLAGS.from_audio:
-            self.file_names, self.moments, self.ground_truth = cross_val_load_df(data_file)
+            self.file_names, self.moments, self.ground_truth = cross_val_load_df(data_file, self)
         else:
-            self.file_names, self.ground_truth = cross_val_load_df(data_file)
+            self.file_names, self.ground_truth = cross_val_load_df(data_file, self)
         
         # Number of samples in data
         self.samples = len(self.file_names)
-        self.num_classes = len(np.unique(self.ground_truth))
 
         # Check if data is empty
         if self.samples == 0:
@@ -101,7 +100,7 @@ class DirectoryIterator(Iterator):
             if FLAGS.structure == 'simple':
                 if FLAGS.from_audio:
                     segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
-                    x = process_audio.compute_mel_gram(segment)
+                    x = process_audio.compute_mel_gram(segment, FLAGS.separation)
                 else:
                     # x = np.load(FLAGS.data_path + self.file_names[j])
                     x = np.load(self.file_names[j])
@@ -130,22 +129,25 @@ class DirectoryIterator(Iterator):
 
             for i in range(len(index_array)):
                 batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
+        else:
+            batch_x = np.expand_dims(np.array(batch_x), axis=3)
 
         return batch_x, np.asarray(batch_y)
 
 
-def cross_val_load_df(data_file):
+def cross_val_load_df(data_file, self):
     """
     # Arguments:
         data_file: csv file containing the name and ground truth of the samples
     # Return:
         dirs_list: samples names
-        moments_list:
+        moments_list: temporal initiation of the classifying segments
         labels_list: ground truth
     """
     data = pd.read_csv(data_file)
     dirs_list = data['spec_name'].tolist()
     labels_list = process_label.labels_to_number(data['ground_truth'].tolist())
+    self.num_classes = len(data['ground_truth'].unique())
     labels_list = [np.array(i) for i in labels_list]
 
     if FLAGS.from_audio:
@@ -158,11 +160,8 @@ def cross_val_load_df(data_file):
 
 def load_many(self, j):
     """
-    # Arguments:
-        self:
-        j:
-    # Return:
-        images:
+    Returns a list of (wind_len) spectrograms, being the one in the middle,
+    the one to be classified and the others, the temporally adjacent ones
     """
     a = np.arange(start=(1-FLAGS.wind_len)/2, stop=(FLAGS.wind_len-1)/2+1)
     images = []
@@ -180,7 +179,7 @@ def load_many(self, j):
                 segment, sr = librosa.load(self.file_names[int(i)],
                                            offset=self.moments[int(i)],
                                            duration=FLAGS.separation)
-            x = process_audio.compute_mel_gram(segment)
+            x = process_audio.compute_mel_gram(segment, FLAGS.separation)
         else:
             if j + i < 0:
                 # x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])

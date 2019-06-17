@@ -119,14 +119,3 @@ def compute_mel_gram(segment, separation):
 
     ret = librosa.power_to_db(mel)
     return ret
-
-
-def silence_detection(audio_slice):
-    """
-
-    :param audio_slice:
-    :return silence:
-    """
-    silence_thresh = -16
-    silence = librosa.feature.rmse(audio_slice) <= silence_thresh
-    return silence

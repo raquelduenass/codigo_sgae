@@ -238,7 +238,7 @@ def res_net(input_shape, depth):
     # Simple model architecture
     if FLAGS.structure == 'simple':
         inputs = Input(shape=input_shape)
-        y = base_model.output
+        y = base_model(inputs)
 
     # Parallel model architecture
     elif FLAGS.structure == 'complex':

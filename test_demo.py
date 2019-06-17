@@ -13,8 +13,8 @@ from common_flags import FLAGS
 # Constants
 TEST_PHASE = 1
 CLASSES = ['music', 'music_speech', 'speech', 'noise']
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
+# os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
+# os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
 
 
 def _main():

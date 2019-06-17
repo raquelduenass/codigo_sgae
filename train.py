@@ -20,9 +20,6 @@ from keras import backend as k
 # Constants
 TRAIN_PHASE = 1
 
-# os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-# os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'  # Only in Windows
-
 
 def get_model_res_net(img_height, img_width, weights_path):
     """

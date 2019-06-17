@@ -4,7 +4,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from common_flags import FLAGS
 from matplotlib.patches import Rectangle
-from matplotlib.collections import PatchCollection
 
 
 def show_results(real, predicted, soft=None):
@@ -273,13 +272,12 @@ def real_label_process(real, n_samples, lengths):
                 lower_solap = (lower_index + 1) - i * FLAGS.overlap
                 upper_solap = i * FLAGS.overlap + FLAGS.separation - (lower_index + 1)
 
-            if lower_solap > upper_solap or lower_index >= (len(flat_real) - 1):
+            if lower_solap > upper_solap:
                 index = lower_index
             else:
                 index = lower_index + 1
-            if index > len(flat_real)-1:
-                index = len(flat_real)-1
-            adapted_labels.append(flat_real[index])
+
+            adapted_labels.append(labels[index])
 
     if FLAGS.demo_path == "../../databases/muspeak":
         for i in range(len(adapted_labels)):
