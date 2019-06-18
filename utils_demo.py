@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import utils
 import librosa
 import process_audio
 import pandas as pd
@@ -98,42 +97,28 @@ class DirectoryIterator(Iterator):
         # Returns: The next batch of images and categorical labels.
         """
         # Extract segments of all the files
-        if FLAGS.structure == 'simple':
-            segments = process_audio.separate_many_audio(self, index_array)
-        else:
-            segments = [[]]*FLAGS.wind_len
-            a = np.arange(start=(1 - FLAGS.wind_len) / 2, stop=(FLAGS.wind_len - 1) / 2 + 1)
-            for i, j in enumerate(a):
-                segments[i] = process_audio.separate_many_audio(self, index_array+j)
+        segments = [[]]*FLAGS.wind_len
+        a = np.arange(start=(1 - FLAGS.wind_len) / 2, stop=(FLAGS.wind_len - 1) / 2 + 1)
+        for i, j in enumerate(a):
+            segments[i] = process_audio.separate_many_audio(self, index_array+j)
 
         # Initialize batches and indexes
         batch_x, batch_x_wind = [], [[]]*FLAGS.wind_len
         
         # Build batch of image data
         for i, j in enumerate(index_array):
-            if FLAGS.structure == 'simple':
-                x = process_audio.compute_mel_gram(segments[i], FLAGS.separation)
-                # Data augmentation
-                x = self.image_data_generator.random_transform(x)
-                x = self.image_data_generator.standardize(x)
-
-            else:
-                x = load_many(self, segments, i)
+            x = load_many(self, segments, i)
             batch_x.append(x)
 
         # Build batch of labels
-        if FLAGS.structure == 'complex':
+        for i in range(FLAGS.wind_len):
+            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                               for j in range(len(index_array))]
 
-            for i in range(FLAGS.wind_len):
-                batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
-                                   for j in range(len(index_array))]
+        batch_x = np.expand_dims(np.array(batch_x), axis=4)
 
-            batch_x = np.expand_dims(np.array(batch_x), axis=4)
-
-            for i in range(len(index_array)):
-                batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
-        else:
-            batch_x = np.expand_dims(np.array(batch_x), axis=3)
+        for i in range(len(index_array)):
+            batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
     
         return batch_x
 

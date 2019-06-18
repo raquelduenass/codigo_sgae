@@ -13,9 +13,6 @@ from common_flags import FLAGS
 TEST_PHASE = 1
 CLASSES = ['music', 'music_speech', 'speech', 'noise']
 
-# os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin'
-# os.environ["PATH"] += os.pathsep + 'C:/Users/rds/Downloads/ffmpeg/bin'
-
 
 def compute_highest_classification_errors(predicted_probabilities, real_labels, n_errors=20):
     """
@@ -78,7 +75,6 @@ def _main():
     model = utils.json_to_model(json_model_path)
 
     # Load weights
-    # weights_load_path = os.path.abspath('./models/test_11/weights_006.h5')
     weights_load_path = os.path.abspath(FLAGS.weights_filename)
     try:
         model.load_weights(weights_load_path)
@@ -87,10 +83,7 @@ def _main():
         print("Impossible to find weight path. Returning untrained model")
 
     # Compile model
-    if FLAGS.f_output == 'softmax':
-        model.compile(loss='categorical_crossentropy', optimizer='adam')
-    else:
-        model.compile(loss='mse', optimizer='adam')
+    model.compile(loss='mse', optimizer='adam')
 
     # Get predictions and ground truth
     n_samples = test_generator.samples
@@ -103,42 +96,21 @@ def _main():
     utils.write_to_file(saving_dict, os.path.join(FLAGS.experiment_root_directory,
                                                   'save_predicted_and_real_labels.json'))
 
-    # Processing of probabilities when sigmoid
-    if FLAGS.f_output == 'sigmoid':
-        # Real labels (ground truth)
-        real_labels = np.argmax(process_label.sigmoid_to_softmax(ground_truth.tolist()), axis=-1)
+    # Real labels (ground truth)
+    real_labels = np.argmax(process_label.sigmoid_to_softmax(ground_truth.tolist()), axis=-1)
 
-        # Predicted probabilities
-        predicted_labels = np.argmax(process_label.predict(probabilities_per_class, FLAGS.threshold), axis=-1)
+    # Predicted probabilities
+    predicted_labels = np.argmax(process_label.predict(probabilities_per_class, FLAGS.threshold), axis=-1)
 
-        # Evaluate predictions: Average accuracy and highest errors
-        print("-----------------------------------------------")
-        print("Evaluation:")
-        ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
-        print('Average accuracy = ', ave_accuracy)
-        print("-----------------------------------------------")
+    # Evaluate predictions: Average accuracy and highest errors
+    print("-----------------------------------------------")
+    print("Evaluation:")
+    ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
+    print('Average accuracy = ', ave_accuracy)
+    print("-----------------------------------------------")
 
-        # Save evaluation
-        utils.write_to_file([ave_accuracy], os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
-
-    else:
-        # Real labels (ground truth)
-        real_labels = np.argmax(ground_truth, axis=-1)
-
-        # Predicted probabilities
-        predicted_probabilities = np.max(probabilities_per_class, axis=-1)
-
-        # Predicted labels
-        predicted_labels = np.argmax(probabilities_per_class, axis=-1)
-
-        # Evaluate predictions: Average accuracy and highest errors
-        print("-----------------------------------------------")
-        print("Evaluation:")
-        evaluation = evaluate_classification(predicted_probabilities, predicted_labels, real_labels)
-        print("-----------------------------------------------")
-
-        # Save evaluation
-        utils.write_to_file(evaluation, os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
+    # Save evaluation
+    utils.write_to_file([ave_accuracy], os.path.join(FLAGS.experiment_root_directory, 'test_results.json'))
 
     # Save predicted and real labels as a dictionary
     labels_dict = {'probabilities': probabilities_per_class.tolist(),

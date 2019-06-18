@@ -18,13 +18,11 @@ gflags.DEFINE_integer('wind_len', 5, 'Window length of temporal filtering')
 # Training parameters
 gflags.DEFINE_integer('n', 1, 'depth of network')
 gflags.DEFINE_integer('version', 2, 'ResNet block type')
-gflags.DEFINE_string('structure', 'complex', 'Parallel layers ("complex") or not ("simple")')
 gflags.DEFINE_boolean('from_audio', False, 'Input to the net from audio or image')
 gflags.DEFINE_integer('batch_size', 32, 'Batch size in training and evaluation')
 gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
 gflags.DEFINE_integer('initial_epoch', 0, 'Initial epoch to start training')
 gflags.DEFINE_float('initial_lr', 1e-4, 'Initial learning rate for adam')
-gflags.DEFINE_string('f_output', 'sigmoid', 'Output function')
 gflags.DEFINE_float('threshold', 0.4, 'Minimum value for the sigmoid output to be active')
 
 # Files

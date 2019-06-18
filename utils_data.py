@@ -1,11 +1,7 @@
 import os
 import numpy as np
-import keras
-import process_audio
 import process_label
-import librosa
 import pandas as pd
-from keras import backend as k
 from keras.preprocessing.image import Iterator, ImageDataGenerator
 from common_flags import FLAGS
 
@@ -58,10 +54,7 @@ class DirectoryIterator(Iterator):
         else:
             data_file = os.path.join(FLAGS.experiment_root_directory, 'test.csv')
 
-        if FLAGS.from_audio:
-            self.file_names, self.moments, self.ground_truth = cross_val_load_df(data_file, self)
-        else:
-            self.file_names, self.ground_truth = cross_val_load_df(data_file, self)
+        self.file_names, self.ground_truth = cross_val_load_df(data_file, self)
         
         # Number of samples in data
         self.samples = len(self.file_names)
@@ -93,44 +86,22 @@ class DirectoryIterator(Iterator):
         """
 
         # Initialize batches
-        batch_x, batch_y_p, batch_x_wind = [], [], [[]]*FLAGS.wind_len
+        batch_x, batch_y, batch_x_wind = [], [], [[]]*FLAGS.wind_len
         
-        # Build batch of image data
+        # Build batch of image data and labels
         for i, j in enumerate(index_array):
-            if FLAGS.structure == 'simple':
-                if FLAGS.from_audio:
-                    segment, sr = librosa.load(self.file_names[j], offset=self.moments[j], duration=FLAGS.separation)
-                    x = process_audio.compute_mel_gram(segment, FLAGS.separation)
-                else:
-                    # x = np.load(FLAGS.data_path + self.file_names[j])
-                    x = np.load(self.file_names[j])
-                # Data augmentation
-                x = self.image_data_generator.standardize(x)
-                x = self.image_data_generator.random_transform(x)
-            else:
-                x = load_many(self, j)
-
+            x = load_many(self, j)
             batch_x.append(x)
-            batch_y_p.append(self.ground_truth[j])
+            batch_y.append(self.ground_truth[j])
 
-        # Build batch of labels
-        if FLAGS.f_output == 'softmax':
-            batch_y = np.array(batch_y_p, dtype=k.floatx())
-            batch_y = keras.utils.to_categorical(batch_y, num_classes=FLAGS.num_classes)
-        else:
-            batch_y = batch_y_p
+        for i in range(FLAGS.wind_len):
+            batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
+                               for j in range(len(batch_x))]
 
-        if FLAGS.structure == 'complex':
-            for i in range(FLAGS.wind_len):
-                batch_x_wind[i] = [np.expand_dims(np.array(batch_x[j][i]), axis=3)
-                                   for j in range(len(batch_x))]
+        batch_x = np.expand_dims(np.array(batch_x), axis=4)
 
-            batch_x = np.expand_dims(np.array(batch_x), axis=4)
-
-            for i in range(len(index_array)):
-                batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
-        else:
-            batch_x = np.expand_dims(np.array(batch_x), axis=3)
+        for i in range(len(index_array)):
+            batch_x[i] = [batch_x_wind[j][i] for j in range(FLAGS.wind_len)]
 
         return batch_x, np.asarray(batch_y)
 
@@ -150,12 +121,7 @@ def cross_val_load_df(data_file, self):
     self.num_classes = len(data['ground_truth'].unique())
     labels_list = [np.array(i) for i in labels_list]
 
-    if FLAGS.from_audio:
-        moments_list = data['moments'].tolist()
-        return dirs_list, labels_list, moments_list
-
-    else:
-        return dirs_list, labels_list
+    return dirs_list, labels_list
 
 
 def load_many(self, j):
@@ -166,30 +132,15 @@ def load_many(self, j):
     a = np.arange(start=(1-FLAGS.wind_len)/2, stop=(FLAGS.wind_len-1)/2+1)
     images = []
     for i in a:
-        if FLAGS.from_audio:
-            if j + i < 0:
-                segment, sr = librosa.load(self.file_names[int(len(self.file_names) - i)],
-                                           offset=self.moments[int(len(self.file_names) - i)],
-                                           duration=FLAGS.separation)
-            elif j + i < len(self.file_names):
-                segment, sr = librosa.load(self.file_names[int(j + i)],
-                                           offset=self.moments[int(j + i)],
-                                           duration=FLAGS.separation)
-            else:
-                segment, sr = librosa.load(self.file_names[int(i)],
-                                           offset=self.moments[int(i)],
-                                           duration=FLAGS.separation)
-            x = process_audio.compute_mel_gram(segment, FLAGS.separation)
+        if j + i < 0:
+            # x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
+            x = np.load(self.file_names[int(len(self.file_names) + i)])
+        elif j+i < len(self.file_names):
+            # x = np.load(FLAGS.data_path + self.file_names[int(j + i)])
+            x = np.load(self.file_names[int(j+i)])
         else:
-            if j + i < 0:
-                # x = np.load(FLAGS.data_path + self.file_names[int(len(self.file_names) + i)])
-                x = np.load(self.file_names[int(len(self.file_names) + i)])
-            elif j+i < len(self.file_names):
-                # x = np.load(FLAGS.data_path + self.file_names[int(j + i)])
-                x = np.load(self.file_names[int(j+i)])
-            else:
-                # x = np.load(FLAGS.data_path + self.file_names[int(i)])
-                x = np.load(self.file_names[int(i)])
+            # x = np.load(FLAGS.data_path + self.file_names[int(i)])
+            x = np.load(self.file_names[int(i)])
         # Data augmentation
         x = self.image_data_generator.standardize(x)
         x = self.image_data_generator.random_transform(x)

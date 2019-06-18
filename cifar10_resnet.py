@@ -220,10 +220,7 @@ def res_net(input_shape, depth):
     base_model = []
 
     # Output dimension
-    if FLAGS.f_output == 'sigmoid':
-        num_classes = FLAGS.num_classes - 1
-    else:
-        num_classes = FLAGS.num_classes
+    num_classes = FLAGS.num_classes - 1
 
     # Create simple model
     if FLAGS.version == 1:
@@ -235,24 +232,18 @@ def res_net(input_shape, depth):
             raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
         base_model = base_res_net_v2(input_shape, depth)
 
-    # Simple model architecture
-    if FLAGS.structure == 'simple':
-        inputs = Input(shape=input_shape)
-        y = base_model(inputs)
+    inputs, features = [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
 
-    # Parallel model architecture
-    elif FLAGS.structure == 'complex':
-        inputs, features = [[]] * FLAGS.wind_len, [[]] * FLAGS.wind_len
-        # Reuse model
-        for i in range(FLAGS.wind_len):
-            inputs[i] = Input(input_shape)
-            features[i] = base_model(inputs[i])
+    # Reuse model
+    for i in range(FLAGS.wind_len):
+        inputs[i] = Input(input_shape)
+        features[i] = base_model(inputs[i])
 
-        y = Concatenate()(features)
+    y = Concatenate()(features)
 
     # Model output
     outputs = Dense(num_classes,
-                    activation=FLAGS.f_output,
+                    activation='sigmoid',
                     kernel_initializer='he_normal')(y)
     model = Model(inputs=inputs, outputs=outputs)
     return model

@@ -67,14 +67,9 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
        initial_epoch: Epoch from which training starts.
     """
     # Configure training process
-    if FLAGS.f_output == 'softmax':
-        model.compile(loss='categorical_crossentropy',
-                      optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                      metrics=['categorical_accuracy'])
-    else:
-        model.compile(loss='mse',
-                      optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
-                      metrics=['mse'])
+    model.compile(loss='mse',
+                  optimizer=Adam(lr=cifar10_resnet.lr_schedule(0)),
+                  metrics=['mse'])
 
     # Save model with the lowest validation loss
     weights_path = os.path.join(FLAGS.experiment_root_directory, 'weights_{epoch:03d}.h5')
@@ -99,24 +94,14 @@ def train_model(train_data_generator, val_data_generator, model, initial_epoch):
     tensor_board = TensorBoard(log_dir="logs/{}".format(str_time), histogram_freq=0)
     callbacks = [write_best_model, save_model_and_loss, lr_reducer, lr_scheduler, tensor_board]
 
-    if FLAGS.structure == 'complex':
-        model.fit_generator(utils.many_generator(train_data_generator),
-                            epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
-                            callbacks=callbacks,
-                            validation_data=utils.many_generator(val_data_generator),
-                            validation_steps=validation_steps,
-                            initial_epoch=initial_epoch,
-                            max_queue_size=30,
-                            workers=2, use_multiprocessing=True)
-    else:
-        model.fit_generator(train_data_generator,
-                            epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
-                            callbacks=callbacks,
-                            validation_data=val_data_generator,
-                            validation_steps=validation_steps,
-                            initial_epoch=initial_epoch,
-                            max_queue_size=10,
-                            workers=2, use_multiprocessing=True)
+    model.fit_generator(utils.many_generator(train_data_generator),
+                        epochs=FLAGS.epochs, steps_per_epoch=steps_per_epoch,
+                        callbacks=callbacks,
+                        validation_data=utils.many_generator(val_data_generator),
+                        validation_steps=validation_steps,
+                        initial_epoch=initial_epoch,
+                        max_queue_size=30,
+                        workers=2, use_multiprocessing=True)
 
 
 def _main():

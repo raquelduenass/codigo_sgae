@@ -1,34 +1,24 @@
 from sklearn import metrics
-from collections import Counter
-import numpy as np
 from matplotlib import pyplot as plt
 from common_flags import FLAGS
 from matplotlib.patches import Rectangle
 
 
-def show_results(real, predicted, soft=None):
+def show_results(real, predicted):
     """
     Printing of the main metrics to check the performance of the system
     # Arguments:
         real: ground truth
         predicted: predictions from the CNN and silence
-        soft: softened predictions
     """
 
     real = real[:len(predicted)]
 
     # Metrics before softening
-    print('Average accuracy before softening= ', metrics.accuracy_score(real, predicted))
-    print('Precision before softening= ', metrics.precision_score(real, predicted, average='weighted'))
-    print('Recall before softening= ', metrics.recall_score(real, predicted, average='weighted'))
-    print('F-score before softening= ', metrics.f1_score(real, predicted, average='weighted'))
-
-    # Accuracy after softening
-    if soft is not None:
-        print('Average accuracy after softening= ', metrics.accuracy_score(real, soft))
-        print('Precision after softening= ', metrics.precision_score(real, soft, average='weighted'))
-        print('Recall after softening= ', metrics.recall_score(real, soft, average='weighted'))
-        print('F-score after softening= ', metrics.f1_score(real, soft, average='weighted'))
+    print('Average accuracy = ', metrics.accuracy_score(real, predicted))
+    print('Precision = ', metrics.precision_score(real, predicted, average='weighted'))
+    print('Recall = ', metrics.recall_score(real, predicted, average='weighted'))
+    print('F-score = ', metrics.f1_score(real, predicted, average='weighted'))
 
     # Music detection
     labels = number_to_labels(predicted)
@@ -45,82 +35,6 @@ def show_results(real, predicted, soft=None):
                   'seg - Duration: ', music_dur[i] * FLAGS.overlap)
 
     return
-
-
-def soft_max_prob(predicted, files, probabilities):
-    # TODO: Introduce probabilities of CNN
-    """
-    # Arguments:
-        predicted:
-        files:
-        probabilities:
-    # Return:
-        ret_soft:
-    """
-    ret_soft = [[]] * files
-
-    for j in range(files):
-        if not (FLAGS.separation / FLAGS.overlap == 0):
-            join = []
-            prob_over = []
-            for i in range(len(predicted[j])):
-                if i < FLAGS.separation / FLAGS.overlap:
-                    join.append(predicted[j][i])
-                    prob_over.append(probabilities[j][i])
-                else:
-                    sum_prob = 0
-                    for k in range(int(i-FLAGS.separation / FLAGS.overlap), int(i)):
-                        sum_prob += probabilities[j][k]
-                    prob_over.append(sum_prob)
-                    join.append(predicted[j][prob_over[i].index(max(prob_over[i]))])
-        else:
-            join = predicted[j]
-            # prob_over = probabilities
-
-        soft = []
-        for i in range(len(join)):
-            if i < FLAGS.wind_len // 2:
-                soft.append(Counter(join[0:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
-            elif i > len(join) - 1 - FLAGS.wind_len // 2:
-                soft.append(Counter(join[i - FLAGS.wind_len // 2:len(join) - 1]).most_common(1)[0][0])
-            else:
-                soft.append(Counter(join[i - FLAGS.wind_len // 2:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
-        ret_soft[j] = soft
-    return ret_soft
-
-
-def soft_max(predicted, files):
-    """
-    # Arguments:
-        predicted:
-        files:
-    # Return:
-        ret_soft:
-    """
-    ret_soft = [[]]*files
-
-    for j in range(files):
-        if not(FLAGS.separation / FLAGS.overlap == 0):
-            join = []
-            for i in range(len(predicted[j])):
-                if i < FLAGS.separation / FLAGS.overlap:
-                    join.append(predicted[j][i])
-                else:
-                    join.append(Counter(predicted[j]
-                                        [int(i-FLAGS.separation / FLAGS.overlap):int(i)]).most_common(1)[0][0])
-        else:
-            join = predicted[j]
-
-        soft = []
-        for i in range(len(join)):
-            if i < FLAGS.wind_len//2:
-                soft.append(Counter(join[0:i+FLAGS.wind_len//2]).most_common(1)[0][0])
-            elif i > len(join)-1-FLAGS.wind_len//2:
-                soft.append(Counter(join[i-FLAGS.wind_len//2:len(join)-1]).most_common(1)[0][0])
-            else:
-                soft.append(Counter(join[i-FLAGS.wind_len//2:i+FLAGS.wind_len//2]).most_common(1)[0][0])
-        ret_soft[j] = soft
-    return ret_soft
 
 
 def counting(data, label):
@@ -179,11 +93,9 @@ def labels_to_number(labels):
     # Return:
         numbers: output of the network according to its output function
     """
-    if FLAGS.f_output == 'sigmoid':
-        dct = {'music': [1, 0, 0], 'music_speech': [1, 1, 0],
-               'speech': [0, 1, 0], 'noise': [0, 0, 1]}
-    else:
-        dct = {'music': 0, 'music_speech': 1, 'speech': 2, 'noise': 3}
+    dct = {'music': [1, 0, 0], 'music_speech': [1, 1, 0],
+           'speech': [0, 1, 0], 'noise': [0, 0, 1]}
+
     numbers = list(map(dct.get, labels))
     return numbers
 
@@ -295,16 +207,7 @@ def real_label_process(real, n_samples, lengths):
 
 def predicted_label_process(probs, lengths):
     # Class correspondence
-    if FLAGS.f_output == 'sigmoid':
-        predicted_labels = predict(probs, FLAGS.threshold)
-    else:
-        predicted_labels = np.argmax(probs, axis=-1).tolist()
-
+    predicted_labels = predict(probs, FLAGS.threshold)
     predicted_labels = separate_labels(predicted_labels, lengths)
-
-    # Temporal filtering
-    # if FLAGS.structure == 'simple':
-        # predicted_labels = soft_max(predicted_labels, len(lengths))
-
 
     return predicted_labels
