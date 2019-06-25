@@ -107,6 +107,9 @@ def _main():
     print("Evaluation:")
     ave_accuracy = metrics.accuracy_score(real_labels, predicted_labels)
     print('Average accuracy = ', ave_accuracy)
+    print('Precision = ', metrics.precision_score(real_labels, predicted_labels, average='weighted'))
+    print('Recall = ', metrics.recall_score(real_labels, predicted_labels, average='weighted'))
+    print('F-score = ', metrics.f1_score(real_labels, predicted_labels, average='weighted'))
     print("-----------------------------------------------")
 
     # Save evaluation
