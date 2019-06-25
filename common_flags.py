@@ -18,7 +18,7 @@ gflags.DEFINE_integer('wind_len', 5, 'Window length of temporal filtering')
 # Training parameters
 gflags.DEFINE_integer('n', 1, 'depth of network')
 gflags.DEFINE_integer('version', 2, 'ResNet block type')
-gflags.DEFINE_string('structure', 'complex', 'Parallel layers ("complex") or not ("simple")')
+gflags.DEFINE_string('structure', 'simple', 'Parallel layers ("complex") or not ("simple")')
 gflags.DEFINE_boolean('from_audio', False, 'Input to the net from audio or image')
 gflags.DEFINE_integer('batch_size', 32, 'Batch size in training and evaluation')
 gflags.DEFINE_integer('epochs', 10, 'Number of epochs for training')
@@ -28,7 +28,7 @@ gflags.DEFINE_string('f_output', 'sigmoid', 'Output function')
 gflags.DEFINE_float('threshold', 0.4, 'Minimum value for the sigmoid output to be active')
 
 # Files
-gflags.DEFINE_string('experiment_root_directory', "./models/test_12", 'Folder '
+gflags.DEFINE_string('experiment_root_directory', "./models/test_14", 'Folder '
                      ' containing all the logs, model weights and results')
 gflags.DEFINE_string('data_path', "../../databases/df_spec",
                      'Folder containing the whole data set')
@@ -40,7 +40,7 @@ gflags.DEFINE_string('exp_name', "exp_1", 'Name of the experiment'
 # Model
 gflags.DEFINE_bool('restore_model', False, 'Whether to restore a trained'
                    ' model for training')
-gflags.DEFINE_string('weights_filename', './models/test_12/weights_010.h5',
+gflags.DEFINE_string('weights_filename', './models/test_14/weights_010.h5',
                      '(Relative) filename of model weights')
 gflags.DEFINE_string('initial_weights', './models/test_14/weights_004.h5',
                      '(Relative) filename of model initial training weights')

@@ -47,48 +47,6 @@ def show_results(real, predicted, soft=None):
     return
 
 
-def soft_max_prob(predicted, files, probabilities):
-    # TODO: Introduce probabilities of CNN
-    """
-    # Arguments:
-        predicted:
-        files:
-        probabilities:
-    # Return:
-        ret_soft:
-    """
-    ret_soft = [[]] * files
-
-    for j in range(files):
-        if not (FLAGS.separation / FLAGS.overlap == 0):
-            join = []
-            prob_over = []
-            for i in range(len(predicted[j])):
-                if i < FLAGS.separation / FLAGS.overlap:
-                    join.append(predicted[j][i])
-                    prob_over.append(probabilities[j][i])
-                else:
-                    sum_prob = 0
-                    for k in range(int(i-FLAGS.separation / FLAGS.overlap), int(i)):
-                        sum_prob += probabilities[j][k]
-                    prob_over.append(sum_prob)
-                    join.append(predicted[j][prob_over[i].index(max(prob_over[i]))])
-        else:
-            join = predicted[j]
-            # prob_over = probabilities
-
-        soft = []
-        for i in range(len(join)):
-            if i < FLAGS.wind_len // 2:
-                soft.append(Counter(join[0:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
-            elif i > len(join) - 1 - FLAGS.wind_len // 2:
-                soft.append(Counter(join[i - FLAGS.wind_len // 2:len(join) - 1]).most_common(1)[0][0])
-            else:
-                soft.append(Counter(join[i - FLAGS.wind_len // 2:i + FLAGS.wind_len // 2]).most_common(1)[0][0])
-        ret_soft[j] = soft
-    return ret_soft
-
-
 def soft_max(predicted, files):
     """
     # Arguments:
@@ -100,25 +58,17 @@ def soft_max(predicted, files):
     ret_soft = [[]]*files
 
     for j in range(files):
-        if not(FLAGS.separation / FLAGS.overlap == 0):
-            join = []
-            for i in range(len(predicted[j])):
-                if i < FLAGS.separation / FLAGS.overlap:
-                    join.append(predicted[j][i])
-                else:
-                    join.append(Counter(predicted[j]
-                                        [int(i-FLAGS.separation / FLAGS.overlap):int(i)]).most_common(1)[0][0])
-        else:
-            join = predicted[j]
 
         soft = []
-        for i in range(len(join)):
+        for i in range(len(predicted[j])):
             if i < FLAGS.wind_len//2:
-                soft.append(Counter(join[0:i+FLAGS.wind_len//2]).most_common(1)[0][0])
-            elif i > len(join)-1-FLAGS.wind_len//2:
-                soft.append(Counter(join[i-FLAGS.wind_len//2:len(join)-1]).most_common(1)[0][0])
+                soft.append(Counter(predicted[j][0:i+FLAGS.wind_len//2]).most_common(1)[0][0])
+            elif i > len(predicted[j])-1-FLAGS.wind_len//2:
+                soft.append(Counter(predicted[j][i-FLAGS.wind_len//2:len(predicted[j])-1]).most_common(1)[0][0])
             else:
-                soft.append(Counter(join[i-FLAGS.wind_len//2:i+FLAGS.wind_len//2]).most_common(1)[0][0])
+                soft.append(Counter(predicted[j][i-FLAGS.wind_len//2:i+FLAGS.wind_len//2]).most_common(1)[0][0])
+        if not(j == files-1):
+            soft.append(predicted[j][-1])
         ret_soft[j] = soft
     return ret_soft
 
@@ -217,7 +167,6 @@ def number_to_labels(numbers):
 
 
 def plot_output(labels, subplot, name):
-    labels = number_to_labels(labels)
     music_pos, music_dur = counting(labels, 'music')
     music_pos_seg, music_dur_seg = [[]]*len(music_pos), [[]]*len(music_dur)
 
@@ -249,46 +198,55 @@ def plot_output(labels, subplot, name):
 
 
 def real_label_process(real, n_samples, lengths):
-    # TODO: corregir asignación de etiquetas
     adapted_labels = []
     real_labels = []
+    labels = [[]] * len(real)
 
-    labels = [real[i].split("', '") for i in range(len(real))]
+    if len(real) == 1:
+        flat_real = real[0].split(", ")
+        flat_real[0] = flat_real[0].split("[")[1]
+        flat_real[-1] = flat_real[-1].split("]")[0]
+    else:
+        if FLAGS.demo_path == '../../databases/muspeak':
+            for i in range(len(real)):
+                labels[i] = real[i].split(", ")
+                labels[i][0] = labels[i][0].split("[")[1]
+                labels[i][-1] = labels[i][-1].split("]")[0]
+        else:
+            for i in range(len(real)):
+                labels[i] = real[i].split("', '")
+                labels[i][0] = labels[i][0].split("['")[1]
+                labels[i][-1] = labels[i][-1].split("']")[0]
 
-    for i in range(len(labels)):
-        labels[i][0] = labels[i][0].split("['")[1]
-        labels[i][-1] = labels[i][-1].split("']")[0]
-
-    flat_real = [item for sublist in labels for item in sublist]
+        flat_real = [item for sublist in labels for item in sublist]
 
     if len(flat_real) == n_samples:
         adapted_labels = flat_real
     else:
         for i in range(n_samples):
             if FLAGS.overlap == 0:
-                lower_index = round(i * FLAGS.separation)
-                lower_solap = (lower_index + 1) - i * FLAGS.separation
-                upper_solap = (i+1) * FLAGS.separation - (lower_index + 1)
+                index = np.floor(i * FLAGS.separation)
             else:
-                lower_index = round(i * FLAGS.overlap)
-                lower_solap = (lower_index + 1) - i * FLAGS.overlap
-                upper_solap = i * FLAGS.overlap + FLAGS.separation - (lower_index + 1)
+                index = np.floor(i * FLAGS.overlap)
 
-            if lower_solap > upper_solap:
-                index = lower_index
-            else:
-                index = lower_index + 1
-
-            adapted_labels.append(labels[index])
+            adapted_labels.append(flat_real[int(index)])
 
     if FLAGS.demo_path == "../../databases/muspeak":
-        for i in range(len(adapted_labels)):
-            real_labels.append(number_to_labels(adapted_labels[i]))
+        adapted_labels = [int(adapted_labels[i]) for i in range(len(adapted_labels))]
+        real_labels.append(number_to_labels(adapted_labels))
     else:
         real_labels = adapted_labels
 
-    real_labels = labels_to_number(real_labels)
-    real_labels = separate_labels(real_labels, lengths)
+    if len(real) == 1:
+        # real_labels = labels_to_number(real_labels[0])
+        real_labels = sigmoid_to_softmax(real_labels)
+    else:
+        if FLAGS.demo_path == "../../databases/muspeak":
+            real_labels = labels_to_number(real_labels[0])
+        else:
+            real_labels = labels_to_number(real_labels)
+        real_labels = sigmoid_to_softmax(real_labels)
+        real_labels = separate_labels(real_labels, lengths)
 
     return real_labels
 
@@ -297,14 +255,26 @@ def predicted_label_process(probs, lengths):
     # Class correspondence
     if FLAGS.f_output == 'sigmoid':
         predicted_labels = predict(probs, FLAGS.threshold)
+        predicted_labels = separate_labels(predicted_labels, lengths)
+
     else:
         predicted_labels = np.argmax(probs, axis=-1).tolist()
+        predicted_labels = separate_labels(predicted_labels, lengths)
 
-    predicted_labels = separate_labels(predicted_labels, lengths)
+    predicted_labels = [np.argmax(predicted_labels[i], axis=-1).tolist() for i in range(len(predicted_labels))]
 
     # Temporal filtering
-    # if FLAGS.structure == 'simple':
-        # predicted_labels = soft_max(predicted_labels, len(lengths))
-
+    if FLAGS.structure == 'simple':
+        predicted_labels = soft_max(predicted_labels, len(lengths))
 
     return predicted_labels
+
+
+def music_detection(labels):
+    labels = number_to_labels(labels)
+    for i in range(len(labels)):
+        if labels[i] == 'music_speech' or labels[i] == 'music':
+            labels[i] = 'music'
+        else:
+            labels[i] = 'no-music'
+    return labels
