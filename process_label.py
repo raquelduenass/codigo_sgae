@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn import metrics
 from matplotlib import pyplot as plt
 from common_flags import FLAGS
@@ -83,6 +84,7 @@ def separate_labels(labels, lengths):
             labels_ret[i] = labels[0:lengths[i]]
         else:
             labels_ret[i] = labels[lengths[i - 1] + 1:lengths[i]]
+            labels_ret[i] = labels[lengths[i - 1] + 1:lengths[i]]
     return labels_ret
 
 
@@ -129,7 +131,6 @@ def number_to_labels(numbers):
 
 
 def plot_output(labels, subplot, name):
-    labels = number_to_labels(labels)
     music_pos, music_dur = counting(labels, 'music')
     music_pos_seg, music_dur_seg = [[]]*len(music_pos), [[]]*len(music_dur)
 
@@ -146,10 +147,10 @@ def plot_output(labels, subplot, name):
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, aspect='equal')
     for x, xe, in zip(music_pos_seg, music_dur_seg):
-        ax1.add_patch(Rectangle((x, 0), xe, 5))
+        ax1.add_patch(Rectangle((x, 0), xe, tot_dur/10))
 
     plt.xlim((0, tot_dur))
-    plt.ylim((0, 5))
+    plt.ylim((0, tot_dur/10))
 
     if subplot == 1:
         plt.title('Real music locations: ' + str(name))
@@ -161,46 +162,55 @@ def plot_output(labels, subplot, name):
 
 
 def real_label_process(real, n_samples, lengths):
-    # TODO: corregir asignación de etiquetas
     adapted_labels = []
     real_labels = []
+    labels = [[]]*len(real)
 
-    labels = [real[i].split("', '") for i in range(len(real))]
+    if len(real) == 1:
+        flat_real = real[0].split(", ")
+        flat_real[0] = flat_real[0].split("[")[1]
+        flat_real[-1] = flat_real[-1].split("]")[0]
+    else:
+        if FLAGS.demo_path == '../../databases/muspeak':
+            for i in range(len(real)):
+                labels[i] = real[i].split(", ")
+                labels[i][0] = labels[i][0].split("[")[1]
+                labels[i][-1] = labels[i][-1].split("]")[0]
+        else:
+            for i in range(len(real)):
+                labels[i] = real[i].split("', '")
+                labels[i][0] = labels[i][0].split("['")[1]
+                labels[i][-1] = labels[i][-1].split("']")[0]
 
-    for i in range(len(labels)):
-        labels[i][0] = labels[i][0].split("['")[1]
-        labels[i][-1] = labels[i][-1].split("']")[0]
-
-    flat_real = [item for sublist in labels for item in sublist]
+        flat_real = [item for sublist in labels for item in sublist]
 
     if len(flat_real) == n_samples:
         adapted_labels = flat_real
     else:
         for i in range(n_samples):
             if FLAGS.overlap == 0:
-                lower_index = round(i * FLAGS.separation)
-                lower_solap = (lower_index + 1) - i * FLAGS.separation
-                upper_solap = (i+1) * FLAGS.separation - (lower_index + 1)
+                index = np.floor(i * FLAGS.separation)
             else:
-                lower_index = round(i * FLAGS.overlap)
-                lower_solap = (lower_index + 1) - i * FLAGS.overlap
-                upper_solap = i * FLAGS.overlap + FLAGS.separation - (lower_index + 1)
+                index = np.floor(i * FLAGS.overlap)
 
-            if lower_solap > upper_solap:
-                index = lower_index
-            else:
-                index = lower_index + 1
-
-            adapted_labels.append(labels[index])
+            adapted_labels.append(flat_real[int(index)])
 
     if FLAGS.demo_path == "../../databases/muspeak":
-        for i in range(len(adapted_labels)):
-            real_labels.append(number_to_labels(adapted_labels[i]))
+        adapted_labels = [int(adapted_labels[i]) for i in range(len(adapted_labels))]
+        real_labels.append(number_to_labels(adapted_labels))
     else:
         real_labels = adapted_labels
 
-    real_labels = labels_to_number(real_labels)
-    real_labels = separate_labels(real_labels, lengths)
+    if len(real) == 1:
+        # real_labels = labels_to_number(real_labels[0])
+        real_labels = sigmoid_to_softmax(real_labels)
+    else:
+        if FLAGS.demo_path == "../../databases/muspeak":
+            real_labels = labels_to_number(real_labels[0])
+        else:
+            real_labels = labels_to_number(real_labels)
+        real_labels = sigmoid_to_softmax(real_labels)
+        real_labels = separate_labels(real_labels, lengths)
 
     return real_labels
 
@@ -211,3 +221,13 @@ def predicted_label_process(probs, lengths):
     predicted_labels = separate_labels(predicted_labels, lengths)
 
     return predicted_labels
+
+
+def music_detection(labels):
+    labels = number_to_labels(labels)
+    for i in range(len(labels)):
+        if labels[i] == 'music_speech' or labels[i] == 'music':
+            labels[i] = 'music'
+        else:
+            labels[i] = 'no-music'
+    return labels

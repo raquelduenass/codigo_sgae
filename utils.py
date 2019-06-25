@@ -92,10 +92,9 @@ def compute_predictions_and_gt(model, generator_init, steps,
     steps_done = 0
     all_outs = []
     all_steerings = []
-    if FLAGS.structure == 'simple':
-        generator = generator_init
-    else:
-        generator = many_generator(generator_init)
+
+    generator = many_generator(generator_init)
+
     if verbose == 1:
         progbar = Progbar(target=steps)
 
@@ -183,10 +182,7 @@ def compute_predictions(model, generator_init, steps, verbose=0):
     if verbose == 1:
         progbar = Progbar(target=steps)
 
-    if FLAGS.structure == 'simple':
-        generator = generator_init
-    else:
-        generator = many_generator_demo(generator_init)
+    generator = many_generator_demo(generator_init)
 
     while steps_done < steps:
         generator_output = next(generator)
