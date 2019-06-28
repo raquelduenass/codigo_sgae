@@ -1,11 +1,12 @@
 import os
 import numpy as np
-import utils
 import librosa
 import process_audio
 import pandas as pd
 from keras.preprocessing.image import Iterator, ImageDataGenerator
 from common_flags import FLAGS
+
+# TODO: Future implementations: 1. Temporal measures. 2. Online computation.
 
 
 class DataGenerator(ImageDataGenerator):

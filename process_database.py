@@ -267,8 +267,7 @@ def create_manual_demo(data_path, save_path):
     file_names, labels = [], []
 
     for i in range(len(music_files)):
-        seg_music, seg_speech = [], []
-        audio_labels = []
+        seg_music, seg_speech, audio_labels = [], [], []
         case = randint(0, 1)
         music, sr = librosa.load(os.path.join(data_path, classes[0], music_files[i]))
         speech, sr_speech = librosa.load(os.path.join(data_path, classes[1], speech_files[i]))
@@ -344,7 +343,7 @@ def create_manual_demo(data_path, save_path):
 def cross_val_create_df(path):
     """
     :param path: folder containing the data
-    :return: split of the data in train, validation and test sets
+    :return: split of the data (depending on the audio file) in train, validation and test sets
     """
     val_gt, test_gt, train_gt = [], [], []
     val_data, test_data, train_data = [], [], []
@@ -382,7 +381,7 @@ def cross_val_create_df(path):
     return
 
 
-def create_df_database(data_path, save_path):
+def create_spectrograms(data_path, save_path):
     """
     Creation of spectrograms from segments of the audio files
     and creation of csv file with association of spectrogram
@@ -395,24 +394,24 @@ def create_df_database(data_path, save_path):
     for classes in os.listdir(data_path):
         spec_names, labels, audio_names = [], [], []
         j = 0
-        class_path = os.path.join(data_path, classes)
 
-        for files in os.listdir(class_path):
-            audio_name = os.path.join(class_path, files)
-            audio, sr = librosa.load(audio_name)
-            audio = librosa.resample(audio, sr, 22050)  # FLAGS.sr)
+        for files in os.listdir(os.path.join(data_path, classes)):
+            audio, sr = librosa.load(os.path.join(os.path.join(data_path, classes), files))
+            audio = librosa.resample(audio, sr, FLAGS.sr)
             length = librosa.get_duration(audio)
-            time_set = [np.round(i, decimals=2) for i in list(np.arange(start=0, stop=length, step=0.96))]
+            time_set = [np.round(i, decimals=2) for i in list(np.arange(start=0, stop=length, step=FLAGS.separation))]
 
+            # for each temporal segment
             for i in range(len(time_set)):
-                segment = audio[int(i * 0.96 * 22050):
-                                int((i + 1) * 0.96 * 22050)]
-                mel = process_audio.compute_mel_gram(segment, 0.96)
+                segment = audio[int(i * FLAGS.separation * FLAGS.sr):
+                                int((i + 1) * FLAGS.separation * FLAGS.sr)]
+                mel = process_audio.compute_mel_gram(segment, FLAGS.separation)
                 spec_name = os.path.join(save_path, classes, 'mel_' + str(j) + '.npy')
                 np.save(spec_name, mel)
                 j = j + 1
 
-                audio_names.append(audio_name)
+                # Save data for csv file
+                audio_names.append(os.path.join(os.path.join(data_path, classes), files))
                 spec_names.append(spec_name)
                 labels.append(classes)
 

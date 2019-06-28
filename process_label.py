@@ -48,18 +48,11 @@ def show_results(real, predicted, soft=None):
 
 
 def soft_max(predicted, files):
-    """
-    # Arguments:
-        predicted:
-        files:
-    # Return:
-        ret_soft:
-    """
     ret_soft = [[]]*files
 
     for j in range(files):
-
         soft = []
+
         for i in range(len(predicted[j])):
             if i < FLAGS.wind_len//2:
                 soft.append(Counter(predicted[j][0:i+FLAGS.wind_len//2]).most_common(1)[0][0])
@@ -67,9 +60,12 @@ def soft_max(predicted, files):
                 soft.append(Counter(predicted[j][i-FLAGS.wind_len//2:len(predicted[j])-1]).most_common(1)[0][0])
             else:
                 soft.append(Counter(predicted[j][i-FLAGS.wind_len//2:i+FLAGS.wind_len//2]).most_common(1)[0][0])
+
         if not(j == files-1):
             soft.append(predicted[j][-1])
+
         ret_soft[j] = soft
+
     return ret_soft
 
 
@@ -180,13 +176,18 @@ def plot_output(labels, subplot, name):
             music_dur_seg[i] = music_dur[i] * FLAGS.overlap
             tot_dur = len(labels)*FLAGS.overlap+FLAGS.separation
 
+    if FLAGS.demo_path == '../../databases/muspeak':
+        vertical = 0.1*tot_dur
+    else:
+        vertical = 5
+
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, aspect='equal')
     for x, xe, in zip(music_pos_seg, music_dur_seg):
-        ax1.add_patch(Rectangle((x, 0), xe, 5))
+        ax1.add_patch(Rectangle((x, 0), xe, vertical))
 
     plt.xlim((0, tot_dur))
-    plt.ylim((0, 5))
+    plt.ylim((0, vertical))
 
     if subplot == 1:
         plt.title('Real music locations: ' + str(name))
